@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+      address: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
       abi: [
         {
           inputs: [
@@ -62,13 +62,7 @@ const deployedContracts = {
         {
           inputs: [],
           name: "userAction",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "success",
-              type: "bool",
-            },
-          ],
+          outputs: [],
           stateMutability: "nonpayable",
           type: "function",
         },
@@ -90,10 +84,6 @@ const deployedContracts = {
           ],
           stateMutability: "view",
           type: "function",
-        },
-        {
-          stateMutability: "payable",
-          type: "receive",
         },
       ],
     },
