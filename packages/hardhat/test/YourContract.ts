@@ -18,11 +18,26 @@ describe("YourContract", function () {
       expect(await yourContract.Salutation()).to.equal("Yo!");
     });
 
-    /* it("Should allow setting a new message", async function () {
-      const newGreeting = "Learn Scaffold-ETH 2! :)";
+    it("Should allow setting of total read", async function () {
+      await yourContract.userAction();
+      expect(await yourContract.readCounter()).to.equal(1);
+    });
 
-      await yourContract.userAction(newGreeting);
-      expect(await yourContract.greeting()).to.equal(newGreeting);
-    });*/
+    it("Should allow setting of individual user read", async function () {
+      const [owner] = await ethers.getSigners();
+      await yourContract.userAction();
+      expect(await yourContract.userReadCounter(owner.address)).to.equal(2);
+    });
+
+    it("Should allow setting of multiple user read", async function () {
+      const [testuser] = await ethers.getSigners();
+      await yourContract.userAction();
+      expect(await yourContract.userReadCounter(testuser.address)).to.equal(3);
+    });
+
+    it("Should allow setting of total read", async function () {
+      await yourContract.userAction();
+      expect(await yourContract.readCounter()).to.equal(4);
+    });
   });
 });
