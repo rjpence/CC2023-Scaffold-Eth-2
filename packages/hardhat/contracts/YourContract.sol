@@ -13,8 +13,7 @@ import "hardhat/console.sol";
  */
 contract YourContract {
 	// State Variables
-	address public immutable owner;
-	string public Salutation = "Yo!"; //hello world
+	//address public immutable owner;
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
 
@@ -28,6 +27,6 @@ contract YourContract {
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
 	constructor(address _owner) {
-		owner = _owner;
+		_owner;
 	}
 }

@@ -122,6 +122,10 @@ const config: HardhatUserConfig = {
       url: "https://rpc.scroll.io",
       accounts: [deployerPrivateKey],
     },
+    avalancheFuji: {
+      url: " https://api.avax-test.network/ext/bc/C/rpc",
+      accounts: [deployerPrivateKey],
+    },
   },
   verify: {
     etherscan: {

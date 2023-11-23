@@ -6,23 +6,36 @@ describe("YourContract", function () {
   // We define a fixture to reuse the same setup in every test.
 
   let yourContract: YourContract;
+
   before(async () => {
     const [owner] = await ethers.getSigners();
     const yourContractFactory = await ethers.getContractFactory("YourContract");
     yourContract = (await yourContractFactory.deploy(owner.address)) as YourContract;
+
     await yourContract.deployed();
   });
 
   describe("Deployment", function () {
-    it("Should have the right message on deploy", async function () {
-      expect(await yourContract.Salutation()).to.equal("Yo!");
+    it("Should allow setting of total read", async function () {
+      await yourContract.userAction();
+      expect(await yourContract.readCounter()).to.equal(1);
     });
 
-    /* it("Should allow setting a new message", async function () {
-      const newGreeting = "Learn Scaffold-ETH 2! :)";
+    it("Should allow setting of individual user read", async function () {
+      const [owner, testUser, Randy] = await ethers.getSigners();
+      await yourContract.userAction();
+      expect(await yourContract.userReadCounter(owner.address)).to.equal(2);
 
-      await yourContract.userAction(newGreeting);
-      expect(await yourContract.greeting()).to.equal(newGreeting);
-    });*/
+      await yourContract.connect(testUser).userAction();
+      expect(await yourContract.userReadCounter(testUser.address)).to.equal(1);
+
+      await yourContract.connect(Randy).userAction();
+      expect(await yourContract.userReadCounter(Randy.address)).to.equal(1);
+    });
+
+    it("Should allow setting of total read", async function () {
+      await yourContract.userAction();
+      expect(await yourContract.readCounter()).to.equal(5);
+    });
   });
 });
