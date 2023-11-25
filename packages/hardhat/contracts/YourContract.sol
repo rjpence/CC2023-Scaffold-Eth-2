@@ -17,11 +17,16 @@ contract YourContract {
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
 
+	string public consumeConfirm = "Content Confirmed";
+	event logContentConsumed(address indexed sender, string message);
+
 
 	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
 	function userAction() public  {
 		readCounter +=1;
 		userReadCounter[msg.sender] += 1;
+		emit logContentConsumed(msg.sender, consumeConfirm);
+		console.log(consumeConfirm);
 	}
 
 	// Constructor: Called once on contract deployment
