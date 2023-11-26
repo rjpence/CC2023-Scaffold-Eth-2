@@ -36,25 +36,7 @@ const Home: NextPage = () => {
 
   useEffect(() => {
     // Make sure the address is available before making the API call
-    if (address) {
-      // TODO: move API URL to .env file
-      fetch("http://localhost:50321/functions/v1/contentItemServer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // TODO: move bearer token to .env file
-          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
-        },
-        body: JSON.stringify({ userAddress: address }),
-      })
-        .then(response => response.json())
-        .then(data => {
-          setUrl(data.url);
-          setTitle(data.title);
-          setQuestion(data.question);
-          setAnswers(data.answers);
-        });
-    }
+    if (address) getContentItem();
   }, [address]);
 
   useEffect(() => {
@@ -115,10 +97,19 @@ const Home: NextPage = () => {
     sendUserActionTransaction();
   }, [transactionSignature]);
 
+  useEffect(() => {
+    console.log("transactionHash has been updated:", transactionHash);
+    getContentItem();
+    setLinkClicked(false);
+  }, [transactionHash]);
+
   const handleLinkClick = () => {
     setLinkClicked(true);
   };
 
+  // TODO: update to call the back end to verify the answer, (correct or incorrect),
+  //       to display the result and, if the selected answer is correct,
+  //       to call setContentItemHash.
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (selectedAnswer) {
@@ -128,6 +119,25 @@ const Home: NextPage = () => {
     }
   };
 
+  const getContentItem = () => {
+    // TODO: move API URL to .env file
+    fetch("http://localhost:50321/functions/v1/contentItemServer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // TODO: move bearer token to .env file
+        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+      },
+      body: JSON.stringify({ userAddress: address }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        setUrl(data.url);
+        setTitle(data.title);
+        setQuestion(data.question);
+        setAnswers(data.answers);
+      });
+  };
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
   //       when the user submits the correct answer, the userAction function should be called
   return (
@@ -143,7 +153,6 @@ const Home: NextPage = () => {
             <a href={url} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
               {title}
             </a>
-            {/* TODO: Replace signature with the transaction hash received from the backend */}
             {transactionHash.length > 0 && <div>Success! Transaction Hash: {transactionHash}</div>}
           </div>
         )}
