@@ -1,118 +1,132 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { NextPage } from "next";
-import { hashMessage } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, hashMessage, http } from "viem";
+import { hardhat } from "viem/chains";
 import { useAccount, useSignMessage } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
 import { Address } from "~~/components/scaffold-eth/Address";
-import { useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
-
-interface ApiResponse {
-  url: string;
-  title: string;
-}
-
-interface SignedDataPayload {
-  address: string;
-  contentItemHash: string | null;
-  signature: string | null;
-}
 
 const Home: NextPage = () => {
   const { address } = useAccount();
+  const contractName = "YourContract";
+  const { data: deployedContractData } = useDeployedContractInfo(contractName);
   const { data: totalReadCount } = useScaffoldContractRead({
-    contractName: "YourContract",
+    contractName: contractName,
     functionName: "readCounter",
   });
 
   const { data: userReadCount } = useScaffoldContractRead({
-    contractName: "YourContract",
+    contractName: contractName,
     functionName: "userReadCounter",
     args: [address],
   });
 
-  const { writeAsync, isSuccess: userActionIsSuccess } = useScaffoldContractWrite({
-    contractName: "YourContract",
-    functionName: "userAction",
-    // Hardhat dev Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-    // This private key is just for testing purposes--the backend should be signing the message
-    account: privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"),
-    onBlockConfirmation: txnReceipt => {
-      console.log("Transaction hash", txnReceipt.transactionHash);
-      setTransactionHash(txnReceipt.transactionHash);
-    },
-  });
-
   const [url, setUrl] = useState<string>("");
   const [title, setTitle] = useState<string>("");
+  const [question, setQuestion] = useState<string>("");
+  const [answers, setAnswers] = useState<string[]>([]);
   const [contentItemHash, setContentItemHash] = useState<string>("");
   const [transactionHash, setTransactionHash] = useState<string>("");
+  const [transactionSignature, setTransactionSignature] = useState<string>("");
   const { data: signedContentItemHash, signMessage } = useSignMessage({ message: contentItemHash });
-
-  // Mock API function
-  // TODO: Replace with backend API endpoints
-  const mockApi = useCallback(
-    async (endpoint: string, payload: SignedDataPayload): Promise<ApiResponse | any> => {
-      if (endpoint === "your-api-endpoint") {
-        console.log("Calling backend to get content item for address:", payload.address);
-        return Promise.resolve({
-          url: "https://blog.eras.fyi/blog/everybody-dance-now-starting-saving-in-your-40s",
-          title: "Everybody Dance Now: Starting Saving in Your 40s",
-          question: "Example Question",
-          answers: ["Answer 1", "Answer 2", "Answer 3"],
-        });
-      } else if (endpoint === "your-different-api-endpoint") {
-        console.log("Sending userAction payload to backend to send to the blockchain:", JSON.stringify(payload));
-        await writeAsync();
-        return Promise.resolve({ success: true });
-      }
-      throw new Error("Invalid endpoint");
-    },
-    [writeAsync],
-  );
+  const [selectedAnswer, setSelectedAnswer] = useState<string>("");
+  const [linkClicked, setLinkClicked] = useState<boolean>(false);
 
   useEffect(() => {
+    // Make sure the address is available before making the API call
     if (address) {
-      mockApi("your-api-endpoint", { address } as SignedDataPayload).then(data => {
-        setUrl(data.url);
-        setTitle(data.title);
-      });
+      // TODO: move API URL to .env file
+      fetch("http://localhost:50321/functions/v1/contentItemServer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // TODO: move bearer token to .env file
+          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+        },
+        body: JSON.stringify({ userAddress: address }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          setUrl(data.url);
+          setTitle(data.title);
+          setQuestion(data.question);
+          setAnswers(data.answers);
+        });
     }
-  }, [address, mockApi]);
+  }, [address]);
 
   useEffect(() => {
     console.log("contentItemHash has been updated:", contentItemHash);
 
-    // TODO: update to actually send a transaction to the smart contract on the locally-running blockchain
-    // TODO: update to expect a blockchain transaction receipt in response
-    const sendToBackend = async () => {
-      const response = await mockApi("your-different-api-endpoint", {
-        address,
-        contentItemHash,
-        signature: signedContentItemHash,
-      } as SignedDataPayload);
-
-      console.log("Response from backend:", response);
-
-      if (response.success) {
-        console.log("Success!");
-      } else {
-        console.error("Error:", response.error);
-        throw response.error;
-      }
-    };
-
     try {
       console.log("Signing contentItemHash...");
+
       signMessage();
 
       console.log("Sending signed message to backend...");
-      sendToBackend();
+
+      const contentConsumptionProverData = {
+        contractAddress: deployedContractData?.address,
+        userAddress: address,
+        contentItemHash: contentItemHash,
+        signedContentItemHash: signedContentItemHash,
+      };
+
+      // TODO: move API URL to .env file
+      fetch("http://localhost:50321/functions/v1/contentConsumptionProver", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+        },
+        body: JSON.stringify(contentConsumptionProverData),
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log("data:", data);
+          setTransactionSignature(data.transactionSignature);
+        });
     } catch (error) {
       console.error("Error signing message:", error);
     }
-  }, [contentItemHash, signedContentItemHash, signMessage, address, mockApi]);
+  }, [contentItemHash, signedContentItemHash, address, deployedContractData, signMessage]);
+
+  useEffect(() => {
+    console.log("transactionSignature has been updated:", transactionSignature);
+    const sendUserActionTransaction = async () => {
+      console.log("Sending signed userAction transaction...");
+
+      const client = createPublicClient({
+        chain: hardhat,
+        transport: http(),
+      });
+
+      const userActionTransactionHash = await client.sendRawTransaction({
+        serializedTransaction: transactionSignature as `0x${string}`,
+      });
+
+      console.log("userActionTransactionHash:", userActionTransactionHash);
+
+      setTransactionHash(userActionTransactionHash);
+    };
+
+    sendUserActionTransaction();
+  }, [transactionSignature]);
+
+  const handleLinkClick = () => {
+    setLinkClicked(true);
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (selectedAnswer) {
+      console.log("selectedAnswer:", selectedAnswer);
+
+      setContentItemHash(hashMessage(`${selectedAnswer}`));
+    }
+  };
 
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
   //       when the user submits the correct answer, the userAction function should be called
@@ -126,26 +140,41 @@ const Home: NextPage = () => {
         {url && title && (
           <div>
             Read this to earn rewards:{" "}
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                setContentItemHash(hashMessage(`${url}: ${title}`));
-              }}
-            >
-              {`"${title}"`}
+            <a href={url} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
+              {title}
             </a>
             {/* TODO: Replace signature with the transaction hash received from the backend */}
-            {userActionIsSuccess && <div>Success! Transaction Hash: {transactionHash}</div>}
+            {transactionHash.length > 0 && <div>Success! Transaction Hash: {transactionHash}</div>}
           </div>
+        )}
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        {linkClicked && question && answers.length > 0 && (
+          <form onSubmit={handleSubmit} className="flex flex-col items-center">
+            <h2>{question}</h2>
+            {answers.map((answer, index) => (
+              <label key={index}>
+                <input
+                  type="radio"
+                  name="answer"
+                  value={answer}
+                  onChange={e => setSelectedAnswer(e.target.value)}
+                  className="radio radio-accent"
+                />
+                {answer}
+              </label>
+            ))}
+            <button type="submit" className="btn btn-outline btn-primary">
+              Submit Answer
+            </button>
+          </form>
         )}
       </div>
       <div className="flex items-center flex-col flex-grow pt=10">Total Reads</div>
       <div className="flex items-center flex-col flex-grow pt=10">
         <div className="p-4 text-4xl">{totalReadCount?.toString()}</div>
       </div>
-      <div className="flex items-center flex-col flex-grow pt=10">Financial Literacy Tracker</div>
+      <div className="flex items-center flex-col flex-grow pt=10">Your Contract</div>
       <div className="flex items-center flex-col flex-grow pt=10">
         <Address address={address} />
         <div className="p-4 text-4xl">{userReadCount?.toString()}</div>
