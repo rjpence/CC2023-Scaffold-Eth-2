@@ -16,6 +16,13 @@ describe("YourContract", function () {
   });
 
   describe("Deployment", function () {
+    it("Should set the right owner", async function () {
+      const [owner] = await ethers.getSigners();
+      expect(await yourContract.owner()).to.equal(owner.address);
+    });
+  });
+
+  describe("User Action", function () {
     it("Should allow setting of total read", async function () {
       await yourContract.userAction();
       expect(await yourContract.readCounter()).to.equal(1);

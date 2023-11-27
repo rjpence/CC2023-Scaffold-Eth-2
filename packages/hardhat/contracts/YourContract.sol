@@ -22,7 +22,7 @@ contract YourContract {
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
 	constructor(address _owner) {
-		_owner;
+		owner = _owner;
 	}
 
 	modifier isOwner() {
