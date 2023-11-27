@@ -1,16 +1,28 @@
+// Importing necessary modules and components from libraries and other files
 import React, { useEffect, useState } from "react";
+// React library for building user interfaces
 import type { NextPage } from "next";
+// Next.js types for typing components
 import { createPublicClient, hashMessage, http } from "viem";
+// Viem library functions for blockchain interactions
 import { hardhat } from "viem/chains";
+// Importing a specific blockchain environment from Viem
 import { useAccount, useSignMessage } from "wagmi";
+// Wagmi hooks for wallet account management and message signing
 import { MetaHeader } from "~~/components/MetaHeader";
+// Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
+// Custom component to display blockchain addresses
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+// Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 
+// Creating a functional component for the homepage
 const Home: NextPage = () => {
-  const { address } = useAccount();
-  const contractName = "YourContract";
+  // State management hooks to store different pieces of information
+  const { address } = useAccount(); // Retrieves the current user's blockchain address
+  const contractName = "YourContract"; // Name of the smart contract to interact with
+  // Hooks to read data from the deployed contract using its name
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
   const { data: totalReadCount } = useScaffoldContractRead({
     contractName: contractName,
@@ -23,22 +35,27 @@ const Home: NextPage = () => {
     args: [address],
   });
 
+  // More state management hooks for various pieces of data
   const [url, setUrl] = useState<string>("");
+  // ... (similar useState declarations for other pieces of data like title, question, etc.)
   const [title, setTitle] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [contentItemHash, setContentItemHash] = useState<string>("");
   const [transactionHash, setTransactionHash] = useState<string>("");
   const [transactionSignature, setTransactionSignature] = useState<string>("");
+  // Hook to sign a message (blockchain transaction) with the user's private key
   const { data: signedContentItemHash, signMessage } = useSignMessage({ message: contentItemHash });
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
   const [linkClicked, setLinkClicked] = useState<boolean>(false);
 
+  // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
     // Make sure the address is available before making the API call
-    if (address) getContentItem();
-  }, [address]);
+    if (address) getContentItem(); // Fetch content item if the address is available
+  }, [address]); // This effect runs whenever 'address' changes
 
+  // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
   useEffect(() => {
     console.log("contentItemHash has been updated:", contentItemHash);
 
@@ -103,10 +120,12 @@ const Home: NextPage = () => {
     setLinkClicked(false);
   }, [transactionHash]);
 
+  // Function to handle link clicks
   const handleLinkClick = () => {
     setLinkClicked(true);
   };
 
+  // Function to handle form submission
   // TODO: update to call the back end to verify the answer, (correct or incorrect),
   //       to display the result and, if the selected answer is correct,
   //       to call setContentItemHash.
@@ -119,6 +138,7 @@ const Home: NextPage = () => {
     }
   };
 
+  // Function to fetch a content item from an API
   const getContentItem = () => {
     // TODO: move API URL to .env file
     fetch("http://localhost:50321/functions/v1/contentItemServer", {
@@ -138,11 +158,14 @@ const Home: NextPage = () => {
         setAnswers(data.answers);
       });
   };
+
+  // The return statement of the component, which renders the UI
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
   //       when the user submits the correct answer, the userAction function should be called
   return (
     <div>
       <MetaHeader />
+      {/* JSX code to render various parts of the page like links, forms, counters, etc. */}
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h1>Financial Literacy Dapp</h1>
       </div>
