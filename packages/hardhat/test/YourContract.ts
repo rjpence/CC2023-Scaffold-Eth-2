@@ -2,13 +2,13 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { YourContract } from "../typechain-types";
 
-describe("YourContract", async function () {
+describe("YourContract", function () {
   // We define a fixture to reuse the same setup in every test.
 
   let yourContract: YourContract;
-  const [owner, user, otherUser] = await ethers.getSigners();
 
   before(async () => {
+    const [owner] = await ethers.getSigners();
     const yourContractFactory = await ethers.getContractFactory("YourContract");
     yourContract = (await yourContractFactory.deploy(owner.address)) as YourContract;
 
@@ -17,6 +17,7 @@ describe("YourContract", async function () {
 
   describe("Deployment", function () {
     it("Should set the right owner", async function () {
+      const [owner] = await ethers.getSigners();
       expect(await yourContract.owner()).to.equal(owner.address);
     });
   });
@@ -25,16 +26,25 @@ describe("YourContract", async function () {
     describe("When caller is not owner", function () {
       it("Should revert", async function () {
         // Get the first two accounts from the wallet and assign the second to `user`
+        const [owner, user] = await ethers.getSigners();
+        const contentItemHash = ethers.utils.formatBytes32String("contentItem");
+        const signedContentItemHash = await owner.signMessage(ethers.utils.arrayify(contentItemHash));
 
-        await expect(yourContract.connect(user).userAction(user.address)).to.be.revertedWith("Not owner");
+        await expect(
+          yourContract.connect(user).userAction(owner.address, contentItemHash, signedContentItemHash),
+        ).to.be.revertedWith("Not owner");
       });
     });
     describe("When caller is owner", function () {
       it("Should record a user action", async function () {
-        await yourContract.connect(owner).userAction(user.address);
+        const [owner, user, otherUser] = await ethers.getSigners();
+        const contentItemHash = ethers.utils.formatBytes32String("contentItem");
+        const signedContentItemHash = await owner.signMessage(ethers.utils.arrayify(contentItemHash));
+
+        await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHash);
         expect(await yourContract.userReadCounter(user.address)).to.equal(1);
 
-        await yourContract.connect(owner).userAction(otherUser.address);
+        await yourContract.connect(owner).userAction(otherUser.address, contentItemHash, signedContentItemHash);
         expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
 
         expect(await yourContract.readCounter()).to.equal(2);

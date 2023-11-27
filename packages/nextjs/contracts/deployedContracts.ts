@@ -41,6 +41,19 @@ const deployedContracts = {
         },
         {
           inputs: [],
+          name: "owner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
           name: "readCounter",
           outputs: [
             {
@@ -53,7 +66,23 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
+          inputs: [
+            {
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "_signedContentItemHash",
+              type: "bytes",
+            },
+          ],
           name: "userAction",
           outputs: [],
           stateMutability: "nonpayable",

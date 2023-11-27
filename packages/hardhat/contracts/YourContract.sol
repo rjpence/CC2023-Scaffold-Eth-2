@@ -32,12 +32,12 @@ contract YourContract {
 	}
 
 	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
-	function userAction(address _user) isOwner public  {
+	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) isOwner public  {
+		_contentItemHash;
+		_signedContentItemHash;
 		readCounter +=1;
 		userReadCounter[_user] += 1;
+
 		emit logContentConsumed(_user, "Content Confirmed");
-		console.log("Content Confirmed");
-		
-	}
-	
+	}	
 }

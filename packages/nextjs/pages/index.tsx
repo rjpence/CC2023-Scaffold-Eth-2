@@ -66,6 +66,8 @@ const Home: NextPage = () => {
 
       console.log("Sending signed message to backend...");
 
+      console.log("Signed contentItemHash:", signedContentItemHash);
+
       const contentConsumptionProverData = {
         contractAddress: deployedContractData?.address,
         userAddress: address,
