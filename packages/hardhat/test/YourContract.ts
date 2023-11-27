@@ -2,13 +2,13 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { YourContract } from "../typechain-types";
 
-describe("YourContract", function () {
+describe("YourContract", async function () {
   // We define a fixture to reuse the same setup in every test.
 
   let yourContract: YourContract;
+  const [owner, user, otherUser] = await ethers.getSigners();
 
   before(async () => {
-    const [owner] = await ethers.getSigners();
     const yourContractFactory = await ethers.getContractFactory("YourContract");
     yourContract = (await yourContractFactory.deploy(owner.address)) as YourContract;
 
@@ -17,32 +17,28 @@ describe("YourContract", function () {
 
   describe("Deployment", function () {
     it("Should set the right owner", async function () {
-      const [owner] = await ethers.getSigners();
       expect(await yourContract.owner()).to.equal(owner.address);
     });
   });
 
   describe("User Action", function () {
-    it("Should allow setting of total read", async function () {
-      await yourContract.userAction();
-      expect(await yourContract.readCounter()).to.equal(1);
+    describe("When caller is not owner", function () {
+      it("Should revert", async function () {
+        // Get the first two accounts from the wallet and assign the second to `user`
+
+        await expect(yourContract.connect(user).userAction(user.address)).to.be.revertedWith("Not owner");
+      });
     });
+    describe("When caller is owner", function () {
+      it("Should record a user action", async function () {
+        await yourContract.connect(owner).userAction(user.address);
+        expect(await yourContract.userReadCounter(user.address)).to.equal(1);
 
-    it("Should allow setting of individual user read", async function () {
-      const [owner, testUser, Randy] = await ethers.getSigners();
-      await yourContract.userAction();
-      expect(await yourContract.userReadCounter(owner.address)).to.equal(2);
+        await yourContract.connect(owner).userAction(otherUser.address);
+        expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
 
-      await yourContract.connect(testUser).userAction();
-      expect(await yourContract.userReadCounter(testUser.address)).to.equal(1);
-
-      await yourContract.connect(Randy).userAction();
-      expect(await yourContract.userReadCounter(Randy.address)).to.equal(1);
-    });
-
-    it("Should allow setting of total read", async function () {
-      await yourContract.userAction();
-      expect(await yourContract.readCounter()).to.equal(5);
+        expect(await yourContract.readCounter()).to.equal(2);
+      });
     });
   });
 });

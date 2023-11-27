@@ -27,15 +27,15 @@ contract YourContract {
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
-		require(msg.sender == owner, "Not the Owner");
+		require(msg.sender == owner, "Not owner");
 		_;
 	}
 
 	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
-	function userAction() public  {
+	function userAction(address _user) isOwner public  {
 		readCounter +=1;
-		userReadCounter[msg.sender] += 1;
-		emit logContentConsumed(msg.sender, "Content Confirmed");
+		userReadCounter[_user] += 1;
+		emit logContentConsumed(_user, "Content Confirmed");
 		console.log("Content Confirmed");
 		
 	}
