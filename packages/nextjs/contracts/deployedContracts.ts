@@ -24,6 +24,31 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
+              indexed: false,
+              internalType: "address",
+              name: "_signer",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+          ],
+          name: "Blerg",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
               indexed: true,
               internalType: "address",
               name: "sender",

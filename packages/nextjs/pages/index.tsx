@@ -3,17 +3,18 @@ import React, { useEffect, useState } from "react";
 // React library for building user interfaces
 import type { NextPage } from "next";
 // Next.js types for typing components
-import { createPublicClient, hashMessage, http } from "viem";
+import { Hex, createWalletClient, hashMessage, http, recoverMessageAddress } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 // Viem library functions for blockchain interactions
 import { hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount } from "wagmi";
 // Wagmi hooks for wallet account management and message signing
 import { MetaHeader } from "~~/components/MetaHeader";
 // Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
 // Custom component to display blockchain addresses
-import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 
@@ -45,9 +46,32 @@ const Home: NextPage = () => {
   const [transactionHash, setTransactionHash] = useState<string>("");
   const [transactionSignature, setTransactionSignature] = useState<string>("");
   // Hook to sign a message (blockchain transaction) with the user's private key
-  const { data: signedContentItemHash, signMessage } = useSignMessage({ message: contentItemHash });
+  // const { data: signedContentItemHash, signMessage } = useSignMessage({ message: { raw: contentItemHash } });
+  const [signedContentItemHash, setSignedContentItemHash] = useState<Hex>(`0x${""}`);
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
   const [linkClicked, setLinkClicked] = useState<boolean>(false);
+
+  const userWalletClient = createWalletClient({
+    transport: http(),
+    chain: hardhat,
+  });
+
+  useScaffoldEventSubscriber({
+    contractName: "YourContract",
+    eventName: "Blerg",
+    // The listener function is called whenever a GreetingChange event is emitted by the contract.
+    // Parameters emitted by the event can be destructed using the below example
+    // for this example: event GreetingChange(address greetingSetter, string newGreeting, bool premium, uint256 value);
+    listener: logs => {
+      logs.map(log => {
+        const { _signer, _user, _contentItemHash: cih } = log.args;
+        console.log("Blerg Event!!!!!!!!!!!!!!");
+        console.log("Signer:", _signer);
+        console.log("User:", _user);
+        console.log("Content Item Hash:", cih);
+      });
+    },
+  });
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
@@ -59,10 +83,35 @@ const Home: NextPage = () => {
   useEffect(() => {
     console.log("contentItemHash has been updated:", contentItemHash);
 
+    // TODO: determine how to get user to sign message with their wallet in the browser
+    // NOTE: Randy, to run this on your machine, you will need to add a `.env.local` file to the `packages/nextjs` directory and add the following line:
+    // NEXT_PUBLIC_USER_PRIVATE_KEY=your_private_key_here
+    // WE WILL NOT DO THIS IN PRODUCTION, THIS IS JUST FOR TESTING PURPOSES
+    const signMessage = async () => {
+      console.log("Signing contentItemHash,", contentItemHash, "with userWalletClient:", address);
+      const signedMessage = await userWalletClient.signMessage({
+        account: privateKeyToAccount(process.env.NEXT_PUBLIC_USER_PRIVATE_KEY as `0x${string}`),
+        message: { raw: contentItemHash as `0x${string}` },
+      });
+
+      setSignedContentItemHash(signedMessage);
+    };
+
+    signMessage();
+  }, [contentItemHash]);
+
+  useEffect(() => {
+    const blerg = async () => {
+      return await recoverMessageAddress({
+        message: { raw: contentItemHash as `0x${string}` },
+        signature: signedContentItemHash as `0x${string}`,
+      });
+    };
+
     try {
       console.log("Signing contentItemHash...");
 
-      signMessage();
+      console.log("Signer is:", blerg());
 
       console.log("Sending signed message to backend...");
 
@@ -92,19 +141,19 @@ const Home: NextPage = () => {
     } catch (error) {
       console.error("Error signing message:", error);
     }
-  }, [contentItemHash, signedContentItemHash, address, deployedContractData, signMessage]);
+  }, [signedContentItemHash, address, deployedContractData]);
 
   useEffect(() => {
     console.log("transactionSignature has been updated:", transactionSignature);
     const sendUserActionTransaction = async () => {
       console.log("Sending signed userAction transaction...");
 
-      const client = createPublicClient({
-        chain: hardhat,
-        transport: http(),
-      });
+      // const client = createPublicClient({
+      //   chain: hardhat,
+      //   transport: http(),
+      // });
 
-      const userActionTransactionHash = await client.sendRawTransaction({
+      const userActionTransactionHash = await userWalletClient.sendRawTransaction({
         serializedTransaction: transactionSignature as `0x${string}`,
       });
 
