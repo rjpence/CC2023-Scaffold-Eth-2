@@ -13,20 +13,31 @@ import "hardhat/console.sol";
  */
 contract YourContract {
 	// State Variables
-	//address public immutable owner;
+	address public owner;
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
 
-
-	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
-	function userAction() public  {
-		readCounter +=1;
-		userReadCounter[msg.sender] += 1;
-	}
+	event logContentConsumed(address indexed sender, string message);
 
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
 	constructor(address _owner) {
 		_owner;
 	}
+
+	modifier isOwner() {
+		// msg.sender: predefined variable that represents address of the account that called the current function
+		require(msg.sender == owner, "Not the Owner");
+		_;
+	}
+
+	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
+	function userAction() public  {
+		readCounter +=1;
+		userReadCounter[msg.sender] += 1;
+		emit logContentConsumed(msg.sender, "Content Confirmed");
+		console.log("Content Confirmed");
+		
+	}
+	
 }

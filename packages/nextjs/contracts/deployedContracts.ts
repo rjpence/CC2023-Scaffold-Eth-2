@@ -21,6 +21,25 @@ const deployedContracts = {
           type: "constructor",
         },
         {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "message",
+              type: "string",
+            },
+          ],
+          name: "logContentConsumed",
+          type: "event",
+        },
+        {
           inputs: [],
           name: "readCounter",
           outputs: [
