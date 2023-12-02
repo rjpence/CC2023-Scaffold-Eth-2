@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../functions-hardhat-starter-kit"
+		}
+	],
+	"settings": {}
+}

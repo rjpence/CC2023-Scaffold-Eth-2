@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "ChainlinkCompetition2023",
+			"path": "../../../../chainlink2023/ChainlinkCompetition2023"
+		},
+		{
+			"path": "../../.."
+		},
+		{
+			"path": "../../../../Documents/PlatformIO"
+		}
+	],
+	"settings": {
+		"files.autoSave": "onFocusChange"
+	}
+}

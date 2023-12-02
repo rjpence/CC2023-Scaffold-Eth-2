@@ -40,6 +40,9 @@ const Home: NextPage = () => {
           Send TX
         </button>
       </div>
+      <div className="flex items-center flex-col flex-grow pt=10">
+        Please enter the url of an article covering financial literacy
+      </div>
 
       <></>
     </>
