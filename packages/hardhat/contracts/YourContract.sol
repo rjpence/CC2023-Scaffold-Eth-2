@@ -22,6 +22,7 @@ contract YourContract {
 	mapping (address => uint) public userReadCounter; //individual total reads among users
 
 	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash);
+	event ContentItemProposed(address indexed _proposer, string _url, string _title);
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
@@ -49,5 +50,9 @@ contract YourContract {
 		userReadCounter[_user] += 1;
 
 		emit ContentItemConsumed(_user, _contentItemHash);
-	}	
+	}
+
+	function proposeContentItem(string memory _url, string memory _title) public {
+		emit ContentItemProposed(msg.sender, _url, _title);
+	}
 }

@@ -10,11 +10,11 @@ import { hardhat } from "viem/chains";
 import { useAccount, useSignMessage } from "wagmi";
 // Wagmi hooks for wallet account management and message signing
 import { MetaHeader } from "~~/components/MetaHeader";
-import { InputBase } from "~~/components/scaffold-eth";
+import { InputBase, getParsedError } from "~~/components/scaffold-eth";
 // Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
 // Custom component to display blockchain addresses
-import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 
@@ -58,6 +58,21 @@ const Home: NextPage = () => {
   const [isTitleFetched, setIsTitleFetched] = useState<boolean>(false);
   const [fetchTitleErrorMessage, setFetchTitleErrorMessage] = useState<string>("");
   const [proposeTransactionHash, setProposeTransactionHash] = useState<string>("");
+  const { writeAsync } = useScaffoldContractWrite({
+    contractName: contractName,
+    functionName: "proposeContentItem",
+    args: [userInputUrl, fetchedTitle],
+    onBlockConfirmation: txnReceipt => {
+      console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
+      setProposeTransactionHash(txnReceipt.transactionHash);
+      console.log("Transaction blockHash", txnReceipt.blockHash);
+    },
+    onError: error => {
+      const message = getParsedError(error);
+      const capitalizedMessage = capitalizeFirstLetter(message);
+      setFetchTitleErrorMessage(capitalizedMessage);
+    },
+  });
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
@@ -138,7 +153,8 @@ const Home: NextPage = () => {
   useEffect(() => {
     if (fetchedTitle.length > 0) {
       // do something
-      setProposeTransactionHash("");
+      console.log("fetchedTitle has been updated:", fetchedTitle);
+      writeAsync({ args: [userInputUrl, fetchedTitle] });
     }
   }, [fetchedTitle]);
 
@@ -236,6 +252,13 @@ const Home: NextPage = () => {
       });
   };
 
+  function capitalizeFirstLetter(str: string): string {
+    if (str.length === 0) {
+      return str;
+    }
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
   // The return statement of the component, which renders the UI
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
   //       when the user submits the correct answer, the userAction function should be called
@@ -311,9 +334,13 @@ const Home: NextPage = () => {
             Propose Content
           </button>
         </form>
-        {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
-        {proposeTransactionHash.length > 0 && <p>Successfully proposed! Transaction Hash: {proposeTransactionHash}</p>}
-        {fetchTitleErrorMessage && <p>{fetchTitleErrorMessage}</p>}
+        <div className="flex items-center flex-col flex-grow pt=10">
+          {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
+          {proposeTransactionHash.length > 0 && (
+            <p>Successfully proposed! Transaction Hash: {proposeTransactionHash}</p>
+          )}
+          {fetchTitleErrorMessage && <p>{fetchTitleErrorMessage}</p>}
+        </div>
       </div>
     </div>
   );

@@ -40,6 +40,31 @@ const deployedContracts = {
           type: "event",
         },
         {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "_proposer",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "_url",
+              type: "string",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "_title",
+              type: "string",
+            },
+          ],
+          name: "ContentItemProposed",
+          type: "event",
+        },
+        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -50,6 +75,24 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_url",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "_title",
+              type: "string",
+            },
+          ],
+          name: "proposeContentItem",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
