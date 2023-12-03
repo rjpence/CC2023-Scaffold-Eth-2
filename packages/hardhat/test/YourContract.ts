@@ -60,16 +60,16 @@ describe("YourContract", function () {
         // Send user's signed content item hash to the contract
         const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHashFromUser);
-        expect(await yourContract.userReadCounter(user.address)).to.equal(1);
+        expect(await yourContract.points(user.address)).to.equal(1);
 
         // Send otherUser's signed content item hash to the contract
         const signedContentItemHashFromOtherUser = await otherUser.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract
           .connect(owner)
           .userAction(otherUser.address, contentItemHash, signedContentItemHashFromOtherUser);
-        expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
+        expect(await yourContract.points(otherUser.address)).to.equal(1);
 
-        expect(await yourContract.readCounter()).to.equal(2);
+        expect(await yourContract.totalPoints()).to.equal(2);
       });
 
       it("Should emit ContentItemConsumed event", async function () {
