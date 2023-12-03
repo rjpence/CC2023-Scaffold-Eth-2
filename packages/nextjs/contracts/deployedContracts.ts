@@ -24,44 +24,19 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: false,
+              indexed: true,
               internalType: "address",
-              name: "_signer",
+              name: "_consumer",
               type: "address",
             },
             {
-              indexed: false,
-              internalType: "address",
-              name: "_user",
-              type: "address",
-            },
-            {
-              indexed: false,
+              indexed: true,
               internalType: "bytes32",
               name: "_contentItemHash",
               type: "bytes32",
             },
           ],
-          name: "Blerg",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "sender",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "string",
-              name: "message",
-              type: "string",
-            },
-          ],
-          name: "logContentConsumed",
+          name: "ContentItemConsumed",
           type: "event",
         },
         {

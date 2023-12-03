@@ -3,18 +3,17 @@ import React, { useEffect, useState } from "react";
 // React library for building user interfaces
 import type { NextPage } from "next";
 // Next.js types for typing components
-import { Hex, createWalletClient, hashMessage, http, recoverMessageAddress } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, hashMessage, http } from "viem";
 // Viem library functions for blockchain interactions
 import { hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
-import { useAccount } from "wagmi";
+import { useAccount, useSignMessage } from "wagmi";
 // Wagmi hooks for wallet account management and message signing
 import { MetaHeader } from "~~/components/MetaHeader";
 // Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
 // Custom component to display blockchain addresses
-import { useDeployedContractInfo, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 
@@ -46,129 +45,86 @@ const Home: NextPage = () => {
   const [transactionHash, setTransactionHash] = useState<string>("");
   const [transactionSignature, setTransactionSignature] = useState<string>("");
   // Hook to sign a message (blockchain transaction) with the user's private key
-  // const { data: signedContentItemHash, signMessage } = useSignMessage({ message: { raw: contentItemHash } });
-  const [signedContentItemHash, setSignedContentItemHash] = useState<Hex>(`0x${""}`);
+  const { data: signedContentItemHash, signMessage } = useSignMessage({
+    message: { raw: contentItemHash as `0x${string}` },
+  });
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
   const [linkClicked, setLinkClicked] = useState<boolean>(false);
-
-  const userWalletClient = createWalletClient({
-    transport: http(),
-    chain: hardhat,
-  });
-
-  useScaffoldEventSubscriber({
-    contractName: "YourContract",
-    eventName: "Blerg",
-    // The listener function is called whenever a GreetingChange event is emitted by the contract.
-    // Parameters emitted by the event can be destructed using the below example
-    // for this example: event GreetingChange(address greetingSetter, string newGreeting, bool premium, uint256 value);
-    listener: logs => {
-      logs.map(log => {
-        const { _signer, _user, _contentItemHash: cih } = log.args;
-        console.log("Blerg Event!!!!!!!!!!!!!!");
-        console.log("Signer:", _signer);
-        console.log("User:", _user);
-        console.log("Content Item Hash:", cih);
-      });
-    },
-  });
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
     // Make sure the address is available before making the API call
-    if (address) getContentItem(); // Fetch content item if the address is available
+    if (address && url.length === 0 && title.length === 0) getContentItem(); // Fetch content item if the address is available
   }, [address]); // This effect runs whenever 'address' changes
 
   // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
   useEffect(() => {
-    console.log("contentItemHash has been updated:", contentItemHash);
+    if (contentItemHash.length > 0) {
+      console.log("contentItemHash has been updated:", contentItemHash);
 
-    // TODO: determine how to get user to sign message with their wallet in the browser
-    // NOTE: Randy, to run this on your machine, you will need to add a `.env.local` file to the `packages/nextjs` directory and add the following line:
-    // NEXT_PUBLIC_USER_PRIVATE_KEY=your_private_key_here
-    // WE WILL NOT DO THIS IN PRODUCTION, THIS IS JUST FOR TESTING PURPOSES
-    const signMessage = async () => {
-      console.log("Signing contentItemHash,", contentItemHash, "with userWalletClient:", address);
-      const signedMessage = await userWalletClient.signMessage({
-        account: privateKeyToAccount(process.env.NEXT_PUBLIC_USER_PRIVATE_KEY as `0x${string}`),
-        message: { raw: contentItemHash as `0x${string}` },
-      });
-
-      setSignedContentItemHash(signedMessage);
-    };
-
-    signMessage();
+      signMessage();
+    }
   }, [contentItemHash]);
 
   useEffect(() => {
-    const blerg = async () => {
-      return await recoverMessageAddress({
-        message: { raw: contentItemHash as `0x${string}` },
-        signature: signedContentItemHash as `0x${string}`,
-      });
-    };
+    if (signedContentItemHash && signedContentItemHash.length > 0) {
+      try {
+        const contentConsumptionProverData = {
+          contractAddress: deployedContractData?.address,
+          userAddress: address,
+          contentItemHash: contentItemHash,
+          signedContentItemHash: signedContentItemHash,
+        };
 
-    try {
-      console.log("Signing contentItemHash...");
-
-      console.log("Signer is:", blerg());
-
-      console.log("Sending signed message to backend...");
-
-      console.log("Signed contentItemHash:", signedContentItemHash);
-
-      const contentConsumptionProverData = {
-        contractAddress: deployedContractData?.address,
-        userAddress: address,
-        contentItemHash: contentItemHash,
-        signedContentItemHash: signedContentItemHash,
-      };
-
-      // TODO: move API URL to .env file
-      fetch("http://localhost:50321/functions/v1/contentConsumptionProver", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
-        },
-        body: JSON.stringify(contentConsumptionProverData),
-      })
-        .then(response => response.json())
-        .then(data => {
-          console.log("data:", data);
-          setTransactionSignature(data.transactionSignature);
-        });
-    } catch (error) {
-      console.error("Error signing message:", error);
+        // TODO: move API URL to .env file
+        fetch("http://localhost:50321/functions/v1/contentConsumptionProver", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+          },
+          body: JSON.stringify(contentConsumptionProverData),
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log("data:", data);
+            setTransactionSignature(data.transactionSignature);
+          });
+      } catch (error) {
+        console.error("Error signing message:", error);
+      }
     }
   }, [signedContentItemHash, address, deployedContractData]);
 
   useEffect(() => {
-    console.log("transactionSignature has been updated:", transactionSignature);
-    const sendUserActionTransaction = async () => {
-      console.log("Sending signed userAction transaction...");
+    if (transactionSignature.length > 0) {
+      console.log("transactionSignature has been updated:", transactionSignature);
+      const sendUserActionTransaction = async () => {
+        console.log("Sending signed userAction transaction...");
 
-      // const client = createPublicClient({
-      //   chain: hardhat,
-      //   transport: http(),
-      // });
+        const publicClient = createPublicClient({
+          chain: hardhat,
+          transport: http(),
+        });
 
-      const userActionTransactionHash = await userWalletClient.sendRawTransaction({
-        serializedTransaction: transactionSignature as `0x${string}`,
-      });
+        const userActionTransactionHash = await publicClient.sendRawTransaction({
+          serializedTransaction: transactionSignature as `0x${string}`,
+        });
 
-      console.log("userActionTransactionHash:", userActionTransactionHash);
+        console.log("userActionTransactionHash:", userActionTransactionHash);
 
-      setTransactionHash(userActionTransactionHash);
-    };
-
-    sendUserActionTransaction();
+        setTransactionHash(userActionTransactionHash);
+      };
+      sendUserActionTransaction();
+    }
   }, [transactionSignature]);
 
   useEffect(() => {
-    console.log("transactionHash has been updated:", transactionHash);
-    getContentItem();
-    setLinkClicked(false);
+    if (transactionHash.length > 0) {
+      console.log("transactionHash has been updated:", transactionHash);
+      getContentItem();
+      setLinkClicked(false);
+    }
   }, [transactionHash]);
 
   // Function to handle link clicks
@@ -191,23 +147,29 @@ const Home: NextPage = () => {
 
   // Function to fetch a content item from an API
   const getContentItem = () => {
-    // TODO: move API URL to .env file
-    fetch("http://localhost:50321/functions/v1/contentItemServer", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // TODO: move bearer token to .env file
-        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
-      },
-      body: JSON.stringify({ userAddress: address }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        setUrl(data.url);
-        setTitle(data.title);
-        setQuestion(data.question);
-        setAnswers(data.answers);
-      });
+    try {
+      // TODO: move API URL to .env file
+      fetch("http://localhost:50321/functions/v1/contentItemServer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // TODO: move bearer token to .env file
+          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+        },
+        body: JSON.stringify({ userAddress: address }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          setUrl(data.url);
+          setTitle(data.title);
+          setQuestion(data.question);
+          setAnswers(data.answers);
+        });
+    } catch (error) {
+      console.error("Error fetching content item:", error);
+      console.log("Retrying...");
+      getContentItem();
+    }
   };
 
   // The return statement of the component, which renders the UI

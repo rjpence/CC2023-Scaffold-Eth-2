@@ -21,8 +21,7 @@ contract YourContract {
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
 
-	event logContentConsumed(address indexed sender, string message);
-	event Blerg(address _signer, address _user, bytes32 _contentItemHash);
+	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash);
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
@@ -49,7 +48,6 @@ contract YourContract {
 		readCounter +=1;
 		userReadCounter[_user] += 1;
 
-		emit Blerg(signer, _user, _contentItemHash);
-		emit logContentConsumed(_user, "Content Confirmed");
+		emit ContentItemConsumed(_user, _contentItemHash);
 	}	
 }

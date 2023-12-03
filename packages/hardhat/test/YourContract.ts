@@ -37,7 +37,6 @@ describe("YourContract", function () {
     });
 
     describe("When caller is owner", function () {
-      // TODO: Fix this test
       describe("When signedContentItemHash signer is not user", function () {
         it("Should revert", async function () {
           const [owner, user, otherUser] = await ethers.getSigners();
@@ -71,6 +70,10 @@ describe("YourContract", function () {
         expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
 
         expect(await yourContract.readCounter()).to.equal(2);
+      });
+
+      it("Should emit ContentItemConsumed event", async function () {
+        expect(false).to.equal(true);
       });
     });
   });
