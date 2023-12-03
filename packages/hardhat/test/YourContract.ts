@@ -16,26 +16,65 @@ describe("YourContract", function () {
   });
 
   describe("Deployment", function () {
-    it("Should allow setting of total read", async function () {
-      await yourContract.userAction();
-      expect(await yourContract.readCounter()).to.equal(1);
+    it("Should set the right owner", async function () {
+      const [owner] = await ethers.getSigners();
+      expect(await yourContract.owner()).to.equal(owner.address);
+    });
+  });
+
+  describe("User Action", function () {
+    describe("When caller is not owner", function () {
+      it("Should revert", async function () {
+        // Get the first two accounts from the wallet and assign the second to `user`
+        const [owner, user] = await ethers.getSigners();
+        const contentItemHash = ethers.utils.id("contentItem");
+        const signedContentItemHash = await user.signMessage(ethers.utils.arrayify(contentItemHash));
+
+        await expect(
+          yourContract.connect(user).userAction(owner.address, contentItemHash, signedContentItemHash),
+        ).to.be.revertedWith("Not owner");
+      });
     });
 
-    it("Should allow setting of individual user read", async function () {
-      const [owner, testUser, Randy] = await ethers.getSigners();
-      await yourContract.userAction();
-      expect(await yourContract.userReadCounter(owner.address)).to.equal(2);
+    describe("When caller is owner", function () {
+      describe("When signedContentItemHash signer is not user", function () {
+        it("Should revert", async function () {
+          const [owner, user, otherUser] = await ethers.getSigners();
+          const contentItemHash = ethers.utils.id("contentItem");
+          const signedContentItemHash = await user.signMessage(ethers.utils.arrayify(contentItemHash));
+          console.log("signedContentItemHash", signedContentItemHash);
 
-      await yourContract.connect(testUser).userAction();
-      expect(await yourContract.userReadCounter(testUser.address)).to.equal(1);
+          // Reverts because signedContentItemHash is signed by user, but otherUser is given as user to userAction
+          await expect(
+            yourContract
+              .connect(owner)
+              .userAction(otherUser.address, contentItemHash, signedContentItemHash as `0x${string}`),
+          ).to.be.revertedWith("Invalid signature");
+        });
+      });
 
-      await yourContract.connect(Randy).userAction();
-      expect(await yourContract.userReadCounter(Randy.address)).to.equal(1);
-    });
+      it("Should record a user action", async function () {
+        const [owner, user, otherUser] = await ethers.getSigners();
+        const contentItemHash = ethers.utils.id("contentItem");
 
-    it("Should allow setting of total read", async function () {
-      await yourContract.userAction();
-      expect(await yourContract.readCounter()).to.equal(5);
+        // Send user's signed content item hash to the contract
+        const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
+        await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHashFromUser);
+        expect(await yourContract.userReadCounter(user.address)).to.equal(1);
+
+        // Send otherUser's signed content item hash to the contract
+        const signedContentItemHashFromOtherUser = await otherUser.signMessage(ethers.utils.arrayify(contentItemHash));
+        await yourContract
+          .connect(owner)
+          .userAction(otherUser.address, contentItemHash, signedContentItemHashFromOtherUser);
+        expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
+
+        expect(await yourContract.readCounter()).to.equal(2);
+      });
+
+      it("Should emit ContentItemConsumed event", async function () {
+        expect(false).to.equal(true);
+      });
     });
   });
 });

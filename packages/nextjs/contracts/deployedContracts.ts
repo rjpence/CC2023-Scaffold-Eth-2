@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
           inputs: [
@@ -26,18 +26,31 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
-              name: "sender",
+              name: "_consumer",
               type: "address",
             },
             {
-              indexed: false,
-              internalType: "string",
-              name: "message",
-              type: "string",
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
             },
           ],
-          name: "logContentConsumed",
+          name: "ContentItemConsumed",
           type: "event",
+        },
+        {
+          inputs: [],
+          name: "owner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
         },
         {
           inputs: [],
@@ -53,7 +66,23 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
+          inputs: [
+            {
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+            {
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes",
+              name: "_signedContentItemHash",
+              type: "bytes",
+            },
+          ],
           name: "userAction",
           outputs: [],
           stateMutability: "nonpayable",
