@@ -60,7 +60,7 @@ const Home: NextPage = () => {
   const [proposeTransactionHash, setProposeTransactionHash] = useState<string>("");
   const { writeAsync } = useScaffoldContractWrite({
     contractName: contractName,
-    functionName: "proposeContentItem",
+    functionName: "extProposeContentItem",
     args: [undefined, undefined, undefined],
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
@@ -295,8 +295,18 @@ const Home: NextPage = () => {
     eventName: "ContentItemProposed",
     listener: logs => {
       logs.map(log => {
-        const { _proposer, _contentItemHash, _url, _title, _requestId } = log.args;
-        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _url, _title, _requestId);
+        const { _proposer, _contentItemHash, _url, _title } = log.args;
+        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _url, _title);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ValidationRequested",
+    listener: logs => {
+      logs.map(log => {
+        const { _requestId, _contentItemHash } = log.args;
+        console.log("📡 ContentItemProposed event", _requestId, _contentItemHash);
       });
     },
   });

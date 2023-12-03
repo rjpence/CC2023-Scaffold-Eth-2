@@ -16,19 +16,16 @@ contract YourContract {
 	// This extends the functionality of bytes32 with the ECDSA functions
 	using ECDSA for bytes32;
 
-	struct Proposal {
-		bytes32 contentItemHash;
-		address proposer;
-	}
-
 	// State Variables
 	address public owner;
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
-	mapping (bytes32 => Proposal) public proposals; //mapping of content item hashes to proposals (proposed content items
+	mapping (bytes32 => bytes32) public requestIdsToHashes;
+	mapping (bytes32 => address) public hashesToProposers;
 
 	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash, address _signer);
-	event ContentItemProposed(address indexed _proposer, bytes32 indexed _contentItemHash, string _url, string _title, bytes32 _requestId);
+	event ContentItemProposed(address indexed _proposer, bytes32 indexed _contentItemHash, string _url, string _title);
+	event ValidationRequested(bytes32 indexed _requestId, bytes32 indexed _contentItemHash);
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
@@ -58,11 +55,16 @@ contract YourContract {
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 	}
 
-	function proposeContentItem(bytes32 _contentItemHash, string memory _url, string memory _title) public {
+	// Marked ext because it will make an external call to Chainlink Functions
+	function extProposeContentItem(bytes32 _contentItemHash, string memory _url, string memory _title) public {
+		require(hashesToProposers[_contentItemHash] == address(0), "Content item already proposed");
+		hashesToProposers[_contentItemHash] = msg.sender;
+		emit ContentItemProposed(msg.sender, _contentItemHash, _url, _title);
+
 		// Send _url and _title to Chainlink Functions to validate the propriety of the content item
 		// replace mockRequestId with the requestId returned by Chainlink Functions
 		bytes32 mockRequestId = blockhash(block.number - 1);
-		proposals[mockRequestId] = Proposal(_contentItemHash, msg.sender);
-		emit ContentItemProposed(msg.sender, _contentItemHash, _url, _title, mockRequestId);
+		requestIdsToHashes[mockRequestId] = _contentItemHash;
+		emit ValidationRequested(mockRequestId, _contentItemHash);
 	}
 }

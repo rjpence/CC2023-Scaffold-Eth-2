@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      address: "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
       abi: [
         {
           inputs: [
@@ -72,52 +72,28 @@ const deployedContracts = {
               name: "_title",
               type: "string",
             },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "_requestId",
-              type: "bytes32",
-            },
           ],
           name: "ContentItemProposed",
           type: "event",
         },
         {
-          inputs: [],
-          name: "owner",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
+          anonymous: false,
           inputs: [
             {
+              indexed: true,
               internalType: "bytes32",
-              name: "",
-              type: "bytes32",
-            },
-          ],
-          name: "proposals",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "contentItemHash",
+              name: "_requestId",
               type: "bytes32",
             },
             {
-              internalType: "address",
-              name: "proposer",
-              type: "address",
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
             },
           ],
-          stateMutability: "view",
-          type: "function",
+          name: "ValidationRequested",
+          type: "event",
         },
         {
           inputs: [
@@ -137,9 +113,41 @@ const deployedContracts = {
               type: "string",
             },
           ],
-          name: "proposeContentItem",
+          name: "extProposeContentItem",
           outputs: [],
           stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "hashesToProposers",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "owner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -150,6 +158,25 @@ const deployedContracts = {
               internalType: "uint256",
               name: "",
               type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "requestIdsToHashes",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
             },
           ],
           stateMutability: "view",
