@@ -18,14 +18,19 @@ contract YourContract {
 
 	// State Variables
 	address public owner;
-	uint256 public readCounter = 0; //total reads among all users
-	mapping (address => uint) public userReadCounter; //individual total reads among users
+	uint256 public totalPoints; // total points among all users
+	uint256 public totalItemsConsumed; // total items consumed
+	uint256 public proposalReward; // configurable reward for proposing a valid content item
+	mapping (address => uint) public points; // points per user
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
 
 	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash, address _signer);
 	event ContentItemProposed(address indexed _proposer, bytes32 indexed _contentItemHash, string _url, string _title);
 	event ValidationRequested(bytes32 indexed _requestId, bytes32 indexed _contentItemHash);
+	event ValidationResponseReceived(bytes32 indexed _requestId, bytes32 indexed _contentItemHash, bool _isContentItemValid);
+	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
+	event ProposalRewardChanged(uint256 _proposalReward);
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
@@ -35,11 +40,12 @@ contract YourContract {
 
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
-	constructor(address _owner) {
+	constructor(address _owner, uint256 _proposalReward) {
 		owner = _owner;
+		proposalReward = _proposalReward;
 	}
 
-	//Upon executing function, readCounter adds one more total read and userReadCounter one more read per user 
+	//Upon executing function, totalPoints adds one more total read and points one more read per user 
 	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) isOwner public  {
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
@@ -49,8 +55,9 @@ contract YourContract {
 		
 		_contentItemHash;
 		_signedContentItemHash;
-		readCounter +=1;
-		userReadCounter[_user] += 1;
+		totalPoints +=1;
+		totalItemsConsumed +=1;
+		points[_user] += 1;
 
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 	}
@@ -66,5 +73,34 @@ contract YourContract {
 		bytes32 mockRequestId = blockhash(block.number - 1);
 		requestIdsToHashes[mockRequestId] = _contentItemHash;
 		emit ValidationRequested(mockRequestId, _contentItemHash);
+	}
+
+	// TODO: Add modifier that only allows FunctionsConsumer contract to call this function
+	function handleValidationResponse(bytes32 _requestId, bool _isContentItemValid) public {
+		bytes32 contentItemHash = requestIdsToHashes[_requestId];
+		address proposer = hashesToProposers[contentItemHash];
+		require(proposer != address(0), "Invalid requestId");
+
+		delete hashesToProposers[contentItemHash];
+		delete requestIdsToHashes[_requestId];
+
+		emit ValidationResponseReceived(_requestId, contentItemHash, _isContentItemValid);
+
+		if (_isContentItemValid) {
+			rewardValidProposal(proposer, contentItemHash);
+		}
+	}
+
+	function rewardValidProposal(address _proposer, bytes32 _contentItemHash) internal {
+		points[_proposer] += proposalReward;
+		totalPoints += proposalReward;
+
+		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, points[_proposer]);
+	}
+
+	function setProposalReward(uint256 _proposalReward) public isOwner {
+		proposalReward = _proposalReward;
+
+		emit ProposalRewardChanged(_proposalReward);
 	}
 }

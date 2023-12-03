@@ -20,19 +20,24 @@ import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContra
 
 // Creating a functional component for the homepage
 const Home: NextPage = () => {
+  const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
   const contractName = "YourContract"; // Name of the smart contract to interact with
   // Hooks to read data from the deployed contract using its name
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
-  const { data: totalReadCount } = useScaffoldContractRead({
+  const { data: totalPoints } = useScaffoldContractRead({
     contractName: contractName,
-    functionName: "readCounter",
+    functionName: "totalPoints",
+  });
+  const { data: totalItemsConsumed } = useScaffoldContractRead({
+    contractName: contractName,
+    functionName: "totalItemsConsumed",
   });
 
-  const { data: userReadCount } = useScaffoldContractRead({
+  const { data: totalUserPoints } = useScaffoldContractRead({
     contractName: contractName,
-    functionName: "userReadCounter",
+    functionName: "points",
     args: [address],
   });
 
@@ -355,25 +360,23 @@ const Home: NextPage = () => {
         )}
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Total Reads</h2>
-        {/* </div>
-      <div className="flex items-center flex-col flex-grow pt=10"> */}
-        <div className="p-4 text-4xl">{totalReadCount?.toString()}</div>
+        <h2>🤓 Total Items Consumed 📚</h2>
+        <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Your Count</h2>
-        {/* </div>
-      <div className="flex items-center flex-col flex-grow pt=10"> */}
+        <h2>Total Points</h2>
+        <div className="p-4 text-4xl">{Number(totalPoints) * pointsUIMultiplier}</div>
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        <h2>Your Points</h2>
         <Address address={address} />
-        <div className="p-4 text-4xl">{userReadCount?.toString()}</div>
+        <div className="p-4 text-4xl">{Number(totalUserPoints) * pointsUIMultiplier}</div>
       </div>
       <></>
       {/* Form for proposing a new content item */}
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h2>Propose</h2>
         <p>Propose financial literacy and well-being content to earn rewards!</p>
-        {/* </div>
-      <div className="flex items-center flex-col flex-grow pt=10"> */}
         <form onSubmit={handleUrlSubmit} className="flex flex-col items-center">
           <InputBase
             name="url"
