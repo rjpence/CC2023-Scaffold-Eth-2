@@ -16,13 +16,19 @@ contract YourContract {
 	// This extends the functionality of bytes32 with the ECDSA functions
 	using ECDSA for bytes32;
 
+	struct Proposal {
+		bytes32 contentItemHash;
+		address proposer;
+	}
+
 	// State Variables
 	address public owner;
 	uint256 public readCounter = 0; //total reads among all users
 	mapping (address => uint) public userReadCounter; //individual total reads among users
+	mapping (bytes32 => Proposal) public proposals; //mapping of content item hashes to proposals (proposed content items
 
-	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash);
-	event ContentItemProposed(address indexed _proposer, string _url, string _title);
+	event ContentItemConsumed(address indexed _consumer, bytes32 indexed _contentItemHash, address _signer);
+	event ContentItemProposed(address indexed _proposer, bytes32 indexed _contentItemHash, string _url, string _title, bytes32 _requestId);
 
 	modifier isOwner() {
 		// msg.sender: predefined variable that represents address of the account that called the current function
@@ -49,10 +55,14 @@ contract YourContract {
 		readCounter +=1;
 		userReadCounter[_user] += 1;
 
-		emit ContentItemConsumed(_user, _contentItemHash);
+		emit ContentItemConsumed(_user, _contentItemHash, signer);
 	}
 
-	function proposeContentItem(string memory _url, string memory _title) public {
-		emit ContentItemProposed(msg.sender, _url, _title);
+	function proposeContentItem(bytes32 _contentItemHash, string memory _url, string memory _title) public {
+		// Send _url and _title to Chainlink Functions to validate the propriety of the content item
+		// replace mockRequestId with the requestId returned by Chainlink Functions
+		bytes32 mockRequestId = blockhash(block.number - 1);
+		proposals[mockRequestId] = Proposal(_contentItemHash, msg.sender);
+		emit ContentItemProposed(msg.sender, _contentItemHash, _url, _title, mockRequestId);
 	}
 }

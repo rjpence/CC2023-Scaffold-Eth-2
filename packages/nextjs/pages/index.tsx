@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 // React library for building user interfaces
 import type { NextPage } from "next";
 // Next.js types for typing components
-import { createPublicClient, hashMessage, http } from "viem";
+import { createPublicClient, http, keccak256, stringToBytes } from "viem";
 // Viem library functions for blockchain interactions
 import { hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
@@ -14,7 +14,7 @@ import { InputBase, getParsedError } from "~~/components/scaffold-eth";
 // Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
 // Custom component to display blockchain addresses
-import { useDeployedContractInfo, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 
@@ -37,9 +37,9 @@ const Home: NextPage = () => {
   });
 
   // More state management hooks for various pieces of data
-  const [url, setUrl] = useState<string>("");
+  const [contentItemUrl, setContentItemUrl] = useState<string>("");
   // ... (similar useState declarations for other pieces of data like title, question, etc.)
-  const [title, setTitle] = useState<string>("");
+  const [contentItemTitle, setContentItemTitle] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [contentItemHash, setContentItemHash] = useState<string>("");
@@ -61,7 +61,7 @@ const Home: NextPage = () => {
   const { writeAsync } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "proposeContentItem",
-    args: [userInputUrl, fetchedTitle],
+    args: [undefined, undefined, undefined],
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
       setProposeTransactionHash(txnReceipt.transactionHash);
@@ -77,7 +77,7 @@ const Home: NextPage = () => {
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
     // Make sure the address is available before making the API call
-    if (address && url.length === 0 && title.length === 0) getContentItem(); // Fetch content item if the address is available
+    if (address && contentItemUrl.length === 0 && contentItemTitle.length === 0) getContentItem(); // Fetch content item if the address is available
   }, [address]); // This effect runs whenever 'address' changes
 
   // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
@@ -152,9 +152,15 @@ const Home: NextPage = () => {
 
   useEffect(() => {
     if (fetchedTitle.length > 0) {
-      // do something
       console.log("fetchedTitle has been updated:", fetchedTitle);
-      writeAsync({ args: [userInputUrl, fetchedTitle] });
+
+      const proposeContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
+
+      console.log("Sending proposeContentItem transaction to blockchain...");
+      console.log("... proposeContentItemHash:", proposeContentItemHash);
+      console.log("... userInputUrl:", userInputUrl);
+      console.log("... fetchedTitle:", fetchedTitle);
+      writeAsync({ args: [proposeContentItemHash, userInputUrl, fetchedTitle] });
     }
   }, [fetchedTitle]);
 
@@ -169,11 +175,22 @@ const Home: NextPage = () => {
   //       to call setContentItemHash.
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (selectedAnswer) {
+    if (selectedAnswer && contentItemUrl && contentItemTitle) {
       console.log("selectedAnswer:", selectedAnswer);
 
-      setContentItemHash(hashMessage(`${selectedAnswer}`));
+      if (validateAnswer(selectedAnswer)) {
+        console.log("Answer is correct!");
+        setContentItemHash(getContentItemHash(contentItemUrl, contentItemTitle));
+      } else {
+        console.log("Answer is incorrect!");
+      }
     }
+  };
+
+  const validateAnswer = (answer: string): boolean => {
+    // TODO: call the back end to verify the answer
+    answer;
+    return true;
   };
 
   // Function to fetch a content item from an API
@@ -191,8 +208,8 @@ const Home: NextPage = () => {
       })
         .then(response => response.json())
         .then(data => {
-          setUrl(data.url);
-          setTitle(data.title);
+          setContentItemUrl(data.url);
+          setContentItemTitle(data.title);
           setQuestion(data.question);
           setAnswers(data.answers);
         });
@@ -201,6 +218,10 @@ const Home: NextPage = () => {
       console.log("Retrying...");
       getContentItem();
     }
+  };
+
+  const getContentItemHash = (url: string, title: string) => {
+    return keccak256(stringToBytes(`${url}: ${title}`));
   };
 
   // Function to handle URL form submission
@@ -259,6 +280,27 @@ const Home: NextPage = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ContentItemConsumed",
+    listener: logs => {
+      logs.map(log => {
+        const { _consumer, _contentItemHash, _signer } = log.args;
+        console.log("📡 ContentItemConsumed event", _consumer, _contentItemHash, _signer);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ContentItemProposed",
+    listener: logs => {
+      logs.map(log => {
+        const { _proposer, _contentItemHash, _url, _title, _requestId } = log.args;
+        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _url, _title, _requestId);
+      });
+    },
+  });
+
   // The return statement of the component, which renders the UI
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
   //       when the user submits the correct answer, the userAction function should be called
@@ -270,11 +312,11 @@ const Home: NextPage = () => {
         <h1>Financial Literacy Dapp</h1>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        {url && title && (
+        {contentItemUrl && contentItemTitle && (
           <div>
             Read this to earn rewards:{" "}
-            <a href={url} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
-              {title}
+            <a href={contentItemUrl} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
+              {contentItemTitle}
             </a>
             {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
           </div>
@@ -334,13 +376,9 @@ const Home: NextPage = () => {
             Propose Content
           </button>
         </form>
-        <div className="flex items-center flex-col flex-grow pt=10">
-          {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
-          {proposeTransactionHash.length > 0 && (
-            <p>Successfully proposed! Transaction Hash: {proposeTransactionHash}</p>
-          )}
-          {fetchTitleErrorMessage && <p>{fetchTitleErrorMessage}</p>}
-        </div>
+        {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
+        {proposeTransactionHash.length > 0 && <p>Successfully proposed! Transaction Hash: {proposeTransactionHash}</p>}
+        {fetchTitleErrorMessage && <p>{fetchTitleErrorMessage}</p>}
       </div>
     </div>
   );

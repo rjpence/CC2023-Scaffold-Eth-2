@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      address: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
       abi: [
         {
           inputs: [
@@ -35,6 +35,12 @@ const deployedContracts = {
               name: "_contentItemHash",
               type: "bytes32",
             },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "_signer",
+              type: "address",
+            },
           ],
           name: "ContentItemConsumed",
           type: "event",
@@ -49,6 +55,12 @@ const deployedContracts = {
               type: "address",
             },
             {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
               indexed: false,
               internalType: "string",
               name: "_url",
@@ -59,6 +71,12 @@ const deployedContracts = {
               internalType: "string",
               name: "_title",
               type: "string",
+            },
+            {
+              indexed: false,
+              internalType: "bytes32",
+              name: "_requestId",
+              type: "bytes32",
             },
           ],
           name: "ContentItemProposed",
@@ -79,6 +97,35 @@ const deployedContracts = {
         },
         {
           inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "proposals",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "contentItemHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "address",
+              name: "proposer",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
             {
               internalType: "string",
               name: "_url",
