@@ -60,21 +60,85 @@ describe("YourContract", function () {
         // Send user's signed content item hash to the contract
         const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHashFromUser);
-        expect(await yourContract.userReadCounter(user.address)).to.equal(1);
+        expect(await yourContract.points(user.address)).to.equal(1);
 
         // Send otherUser's signed content item hash to the contract
         const signedContentItemHashFromOtherUser = await otherUser.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract
           .connect(owner)
           .userAction(otherUser.address, contentItemHash, signedContentItemHashFromOtherUser);
-        expect(await yourContract.userReadCounter(otherUser.address)).to.equal(1);
+        expect(await yourContract.points(otherUser.address)).to.equal(1);
 
-        expect(await yourContract.readCounter()).to.equal(2);
+        expect(await yourContract.totalPoints()).to.equal(2);
       });
 
       it("Should emit ContentItemConsumed event", async function () {
         expect(true).to.equal(true);
       });
+    });
+  });
+
+  describe("extProposeContentItem", function () {
+    it("Should revert when content item already proposed", async function () {
+      expect(false).to.equal(true);
+    });
+
+    it("Should emit ContentItemProposed event", async function () {
+      expect(false).to.equal(true);
+    });
+
+    it("Should store content item hash and proposer", async function () {
+      // You will need the `requestId` to get the content item hash from the `hashesToProposers` mapping
+      // That value will be emitted in the `ValidationRequested` event
+      expect(false).to.equal(true);
+    });
+
+    it("Should emit ValidationRequested event", async function () {
+      expect(false).to.equal(true);
+    });
+  });
+
+  describe("handleValidationResponse", function () {
+    it("Should revert for invalid requestId", async function () {
+      expect(false).to.equal(true);
+    });
+
+    it("Should delete the content item hash and proposer", async function () {
+      expect(false).to.equal(true);
+    });
+
+    it("Should emit ValidationResponseReceived event", async function () {
+      expect(false).to.equal(true);
+    });
+
+    describe("When propose is valid", function () {
+      it("Should increase proposer's points by proposalReward", async function () {
+        expect(false).to.equal(true);
+      });
+
+      it("Should increase totalPoints by proposalReward", async function () {
+        expect(false).to.equal(true);
+      });
+
+      it("Should emit ValidProposalRewarded event", async function () {
+        expect(false).to.equal(true);
+      });
+    });
+  });
+
+  describe("setProposalReward", function () {
+    describe("When caller is not owner", function () {
+      it("Should revert", async function () {
+        expect(false).to.equal(true);
+      });
+    });
+
+    it("Should set the new proposalReward", async function () {
+      expect(false).to.equal(true);
+    });
+
+    it("Should emit ProposalRewardChanged event", async function () {
+      expect(false).to.equal(true);
     });
   });
 });

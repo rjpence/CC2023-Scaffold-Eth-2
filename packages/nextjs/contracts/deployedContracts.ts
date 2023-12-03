@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      address: "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
       abi: [
         {
           inputs: [
@@ -15,6 +15,11 @@ const deployedContracts = {
               internalType: "address",
               name: "_owner",
               type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_proposalReward",
+              type: "uint256",
             },
           ],
           stateMutability: "nonpayable",
@@ -35,9 +40,194 @@ const deployedContracts = {
               name: "_contentItemHash",
               type: "bytes32",
             },
+            {
+              indexed: false,
+              internalType: "address",
+              name: "_signer",
+              type: "address",
+            },
           ],
           name: "ContentItemConsumed",
           type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "_proposer",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "_url",
+              type: "string",
+            },
+            {
+              indexed: false,
+              internalType: "string",
+              name: "_title",
+              type: "string",
+            },
+          ],
+          name: "ContentItemProposed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_proposalReward",
+              type: "uint256",
+            },
+          ],
+          name: "ProposalRewardChanged",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "_proposer",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_proposalReward",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_totalProposerPoints",
+              type: "uint256",
+            },
+          ],
+          name: "ValidProposalRewarded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_requestId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+          ],
+          name: "ValidationRequested",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_requestId",
+              type: "bytes32",
+            },
+            {
+              indexed: true,
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              indexed: false,
+              internalType: "bool",
+              name: "_isContentItemValid",
+              type: "bool",
+            },
+          ],
+          name: "ValidationResponseReceived",
+          type: "event",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "_contentItemHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "string",
+              name: "_url",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "_title",
+              type: "string",
+            },
+          ],
+          name: "extProposeContentItem",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "_requestId",
+              type: "bytes32",
+            },
+            {
+              internalType: "bool",
+              name: "_isContentItemValid",
+              type: "bool",
+            },
+          ],
+          name: "handleValidationResponse",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "hashesToProposers",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
         },
         {
           inputs: [],
@@ -53,8 +243,85 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "points",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
-          name: "readCounter",
+          name: "proposalReward",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          name: "requestIdsToHashes",
+          outputs: [
+            {
+              internalType: "bytes32",
+              name: "",
+              type: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_proposalReward",
+              type: "uint256",
+            },
+          ],
+          name: "setProposalReward",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalItemsConsumed",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalPoints",
           outputs: [
             {
               internalType: "uint256",
@@ -86,25 +353,6 @@ const deployedContracts = {
           name: "userAction",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "userReadCounter",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
       ],
