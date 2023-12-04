@@ -9,10 +9,17 @@ describe("YourContract", function () {
 
   before(async () => {
     const [owner] = await ethers.getSigners();
+    const proposalReward = 1;
+
+    console.log("yes");
     const yourContractFactory = await ethers.getContractFactory("YourContract");
-    yourContract = (await yourContractFactory.deploy(owner.address)) as YourContract;
+    console.log("yes1");
+
+    yourContract = (await yourContractFactory.deploy(owner.address, proposalReward)) as YourContract;
+    console.log("yes2");
 
     await yourContract.deployed();
+    console.log("yes3");
   });
 
   describe("Deployment", function () {
@@ -73,11 +80,27 @@ describe("YourContract", function () {
       });
 
       it("Should emit ContentItemConsumed event", async function () {
-        expect(true).to.equal(true);
+        const [owner, user] = await ethers.getSigners();
+        const contentItemHash = ethers.utils.id("contentItem");
+
+        // Send user's signed content item hash to the contract
+        const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
+
+        //Trigger the event indicating content consumption
+        const contentConsumedEmitter = await yourContract
+          .connect(owner)
+          .userAction(user.address, contentItemHash, signedContentItemHashFromUser);
+
+        await contentConsumedEmitter.wait();
+
+        //Check if ContentItemConsumed was emitted
+        const eventFilter = yourContract.filters.ContentItemConsumed();
+        const events = await yourContract.queryFilter(eventFilter);
+        expect(events.length).to.equal(3);
       });
     });
   });
-
+  /*
   describe("extProposeContentItem", function () {
     it("Should revert when content item already proposed", async function () {
       expect(false).to.equal(true);
@@ -140,5 +163,5 @@ describe("YourContract", function () {
     it("Should emit ProposalRewardChanged event", async function () {
       expect(false).to.equal(true);
     });
-  });
+  });*/
 });
