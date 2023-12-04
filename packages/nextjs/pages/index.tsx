@@ -118,12 +118,11 @@ const Home: NextPage = () => {
           signedContentItemHash: signedContentItemHash,
         };
 
-        // TODO: move API URL to .env file
-        fetch("http://localhost:50321/functions/v1/contentConsumptionProver", {
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/contentConsumptionProver`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
           },
           body: JSON.stringify(contentConsumptionProverData),
         })
@@ -228,13 +227,11 @@ const Home: NextPage = () => {
   // Function to fetch a content item from an API
   const getContentItem = () => {
     try {
-      // TODO: move API URL to .env file
-      fetch("http://localhost:50321/functions/v1/contentItemServer", {
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/contentItemServer`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // TODO: move bearer token to .env file
-          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
         },
         body: JSON.stringify({ userAddress: address }),
       })
@@ -288,13 +285,11 @@ const Home: NextPage = () => {
 
   // Function to fetch the title of a URL from an API
   const getURLTitle = () => {
-    // TODO: move API URL to .env file
-    fetch("http://localhost:50321/functions/v1/proposedContentTitleGetter", {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/proposedContentTitleGetter`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // TODO: move bearer token to .env file
-        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
       },
       body: JSON.stringify({ userAddress: address }),
     })
