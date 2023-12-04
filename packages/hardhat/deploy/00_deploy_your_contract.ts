@@ -26,7 +26,6 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   const functionsRouterAvalancheFuji = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
   // const linkTokenAvalancheFuji = "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846";
   // const donIDString = "fun-avalanche-fuji-1";
-  // const donIDHex = "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000";
 
   await deploy("YourContract", {
     from: deployer,

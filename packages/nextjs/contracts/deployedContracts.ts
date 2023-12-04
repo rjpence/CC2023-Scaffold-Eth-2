@@ -18,7 +18,7 @@ const deployedContracts = {
             },
             {
               internalType: "address",
-              name: "_router",
+              name: "router",
               type: "address",
             },
           ],
@@ -103,15 +103,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "string",
-              name: "_url",
-              type: "string",
-            },
-            {
-              indexed: false,
-              internalType: "string",
-              name: "_title",
-              type: "string",
+              internalType: "string[]",
+              name: "_contentItemArgs",
+              type: "string[]",
             },
           ],
           name: "ContentItemProposed",
@@ -310,13 +304,48 @@ const deployedContracts = {
             },
             {
               internalType: "string",
-              name: "_url",
+              name: "_source",
               type: "string",
             },
             {
-              internalType: "string",
-              name: "_title",
-              type: "string",
+              internalType: "bytes",
+              name: "_encryptedSecretsUrls",
+              type: "bytes",
+            },
+            {
+              internalType: "uint8",
+              name: "_donHostedSecretsSlotID",
+              type: "uint8",
+            },
+            {
+              internalType: "uint64",
+              name: "_donHostedSecretsVersion",
+              type: "uint64",
+            },
+            {
+              internalType: "string[]",
+              name: "_contentItemArgs",
+              type: "string[]",
+            },
+            {
+              internalType: "bytes[]",
+              name: "_bytesArgs",
+              type: "bytes[]",
+            },
+            {
+              internalType: "uint64",
+              name: "_subscriptionId",
+              type: "uint64",
+            },
+            {
+              internalType: "uint32",
+              name: "_gasLimit",
+              type: "uint32",
+            },
+            {
+              internalType: "bytes32",
+              name: "_donId",
+              type: "bytes32",
             },
           ],
           name: "extProposeContentItem",
@@ -343,24 +372,6 @@ const deployedContracts = {
             },
           ],
           name: "handleOracleFulfillment",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes32",
-              name: "_requestId",
-              type: "bytes32",
-            },
-            {
-              internalType: "bool",
-              name: "_isContentItemValid",
-              type: "bool",
-            },
-          ],
-          name: "handleValidationResponse",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -485,99 +496,6 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "string",
-              name: "source",
-              type: "string",
-            },
-            {
-              internalType: "bytes",
-              name: "encryptedSecretsUrls",
-              type: "bytes",
-            },
-            {
-              internalType: "uint8",
-              name: "donHostedSecretsSlotID",
-              type: "uint8",
-            },
-            {
-              internalType: "uint64",
-              name: "donHostedSecretsVersion",
-              type: "uint64",
-            },
-            {
-              internalType: "string[]",
-              name: "args",
-              type: "string[]",
-            },
-            {
-              internalType: "bytes[]",
-              name: "bytesArgs",
-              type: "bytes[]",
-            },
-            {
-              internalType: "uint64",
-              name: "subscriptionId",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "gasLimit",
-              type: "uint32",
-            },
-            {
-              internalType: "bytes32",
-              name: "donID",
-              type: "bytes32",
-            },
-          ],
-          name: "sendRequest",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "requestId",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "bytes",
-              name: "request",
-              type: "bytes",
-            },
-            {
-              internalType: "uint64",
-              name: "subscriptionId",
-              type: "uint64",
-            },
-            {
-              internalType: "uint32",
-              name: "gasLimit",
-              type: "uint32",
-            },
-            {
-              internalType: "bytes32",
-              name: "donID",
-              type: "bytes32",
-            },
-          ],
-          name: "sendRequestCBOR",
-          outputs: [
-            {
-              internalType: "bytes32",
-              name: "requestId",
-              type: "bytes32",
-            },
-          ],
-          stateMutability: "nonpayable",
           type: "function",
         },
         {

@@ -66,7 +66,18 @@ const Home: NextPage = () => {
   const { writeAsync } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "extProposeContentItem",
-    args: [undefined, undefined, undefined],
+    args: [
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ],
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
       setProposeTransactionHash(txnReceipt.transactionHash);
@@ -78,6 +89,9 @@ const Home: NextPage = () => {
       setFetchTitleErrorMessage(capitalizedMessage);
     },
   });
+  const chainlinkDONIdHex = "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000";
+  const chainlinkSubscriptionId = 1632;
+  const chainlinkFunctionsGasLimit = 300000;
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
@@ -159,13 +173,26 @@ const Home: NextPage = () => {
     if (fetchedTitle.length > 0) {
       console.log("fetchedTitle has been updated:", fetchedTitle);
 
-      const proposeContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
+      const proposedContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
 
       console.log("Sending proposeContentItem transaction to blockchain...");
-      console.log("... proposeContentItemHash:", proposeContentItemHash);
+      console.log("... proposeContentItemHash:", proposedContentItemHash);
       console.log("... userInputUrl:", userInputUrl);
       console.log("... fetchedTitle:", fetchedTitle);
-      writeAsync({ args: [proposeContentItemHash, userInputUrl, fetchedTitle] });
+      writeAsync({
+        args: [
+          proposedContentItemHash,
+          "return Functions.encodeUint256(4);", // source
+          "0x", // user hosted secrets - encryptedSecretsUrls - empty in this example
+          0, // don hosted secrets - slot ID - empty in this example
+          BigInt(0), // don hosted secrets - version - empty in this example
+          [userInputUrl, fetchedTitle], // contentItemArgs
+          [], // bytesArgs - arguments can be encoded off-chain to bytes.
+          BigInt(chainlinkSubscriptionId),
+          chainlinkFunctionsGasLimit,
+          chainlinkDONIdHex, // jobId is bytes32 representation of donId
+        ],
+      });
     }
   }, [fetchedTitle]);
 
@@ -300,8 +327,8 @@ const Home: NextPage = () => {
     eventName: "ContentItemProposed",
     listener: logs => {
       logs.map(log => {
-        const { _proposer, _contentItemHash, _url, _title } = log.args;
-        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _url, _title);
+        const { _proposer, _contentItemHash, _contentItemArgs } = log.args;
+        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _contentItemArgs);
       });
     },
   });
@@ -311,7 +338,7 @@ const Home: NextPage = () => {
     listener: logs => {
       logs.map(log => {
         const { _requestId, _contentItemHash } = log.args;
-        console.log("📡 ContentItemProposed event", _requestId, _contentItemHash);
+        console.log("📡 ValidationRequested event", _requestId, _contentItemHash);
       });
     },
   });
