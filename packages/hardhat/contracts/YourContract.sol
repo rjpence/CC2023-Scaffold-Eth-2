@@ -7,17 +7,18 @@ import "hardhat/console.sol";
 // Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
 // import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./FunctionsConsumer.sol";
 
 /**
  * A smart contract that allows changing a state variable of the contract and tracking the changes
-  * @author rjpence
+  * @author Jason Banks, Randy Pence
  */
-contract YourContract {
+contract YourContract is FunctionsConsumer {
 	// This extends the functionality of bytes32 with the ECDSA functions
 	using ECDSA for bytes32;
 
 	// State Variables
-	address public owner;
+	// address public override owner;
 	uint256 public totalPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
 	uint256 public proposalReward; // configurable reward for proposing a valid content item
@@ -32,21 +33,20 @@ contract YourContract {
 	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
 	event ProposalRewardChanged(uint256 _proposalReward);
 
-	modifier isOwner() {
-		// msg.sender: predefined variable that represents address of the account that called the current function
-		require(msg.sender == owner, "Not owner");
-		_;
-	}
-
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
-	constructor(address _owner, uint256 _proposalReward) {
-		owner = _owner;
+	constructor(uint256 _proposalReward, address _router) FunctionsConsumer(_router) {
 		proposalReward = _proposalReward;
 	}
 
+	function setProposalReward(uint256 _proposalReward) public onlyOwner {
+		proposalReward = _proposalReward;
+
+		emit ProposalRewardChanged(_proposalReward);
+	}
+
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
-	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) isOwner public  {
+	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
@@ -87,20 +87,14 @@ contract YourContract {
 		emit ValidationResponseReceived(_requestId, contentItemHash, _isContentItemValid);
 
 		if (_isContentItemValid) {
-			rewardValidProposal(proposer, contentItemHash);
+			_rewardValidProposal(proposer, contentItemHash);
 		}
 	}
 
-	function rewardValidProposal(address _proposer, bytes32 _contentItemHash) internal {
+	function _rewardValidProposal(address _proposer, bytes32 _contentItemHash) private {
 		points[_proposer] += proposalReward;
 		totalPoints += proposalReward;
 
 		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, points[_proposer]);
-	}
-
-	function setProposalReward(uint256 _proposalReward) public isOwner {
-		proposalReward = _proposalReward;
-
-		emit ProposalRewardChanged(_proposalReward);
 	}
 }
