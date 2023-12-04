@@ -24,7 +24,7 @@
     "next:lint": "yarn workspace @se-2/nextjs lint",
     "next:format": "yarn workspace @se-2/nextjs format",
     "next:check-types": "yarn workspace @se-2/nextjs check-types",
-    "postinstall": "husky install",
+    "postinstall": "patch-package && husky install",
     "precommit": "lint-staged",
     "vercel": "yarn workspace @se-2/nextjs vercel",
     "vercel:yolo": "yarn workspace @se-2/nextjs vercel:yolo"
@@ -41,7 +41,8 @@
     "@chainlink/contracts": "^0.8.0",
     "@chainlink/env-enc": "^1.0.5",
     "@chainlink/functions-toolkit": "^0.2.7",
-    "vercel": "latest",
+    "patch-package": "^8.0.0",
+    "vercel": "^32.6.1",
     "viem": "^1.19.3",
     "wagmi": "^1.4.7"
   }
