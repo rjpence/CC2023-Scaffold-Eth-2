@@ -94,22 +94,45 @@ describe("YourContract", function () {
         await contentConsumedEmitter.wait();
 
         //Check if ContentItemConsumed was emitted
-        const eventFilter = yourContract.filters.ContentItemConsumed();
+        const eventFilter = yourContract.filters.ContentItemConsumed(user.address, contentItemHash);
         const events = await yourContract.queryFilter(eventFilter);
-        expect(events.length).to.equal(3);
+        expect(events.length).to.equal(2);
       });
     });
   });
-  /*
+
   describe("extProposeContentItem", function () {
-    it("Should revert when content item already proposed", async function () {
+    /* it("Should revert when content item already proposed", async function () {
+      const [owner, user] = await ethers.getSigners();
+      const contentItemHash = ethers.utils.id("contentItem");
+      const url = ethers.utils.id("url");
+      const title = ethers.utils.id("title");
+
+      await yourContract.connect(owner).extProposeContentItem(contentItemHash, url, title);
+
+      const proposedFilter = yourContract.filters.ContentItemProposed(user.address, contentItemHash, url, title);
+
+
       expect(false).to.equal(true);
-    });
+    });*/
 
     it("Should emit ContentItemProposed event", async function () {
-      expect(false).to.equal(true);
-    });
+      const [user] = await ethers.getSigners();
+      const contentItemHash = ethers.utils.id("contentItem");
+      const url = ethers.utils.id("url");
+      const title = ethers.utils.id("title");
 
+      //Trigger the event indicating content proposition
+      const ContentItemProposed = await yourContract.connect(user).extProposeContentItem(contentItemHash, url, title);
+
+      await ContentItemProposed.wait();
+
+      //Check if ContentItemProposed was emitted
+      const eventFilter = yourContract.filters.ContentItemProposed(user.address, contentItemHash);
+      const events = await yourContract.queryFilter(eventFilter);
+      expect(events.length).to.equal(1);
+    });
+    /*
     it("Should store content item hash and proposer", async function () {
       // You will need the `requestId` to get the content item hash from the `hashesToProposers` mapping
       // That value will be emitted in the `ValidationRequested` event
@@ -162,6 +185,6 @@ describe("YourContract", function () {
 
     it("Should emit ProposalRewardChanged event", async function () {
       expect(false).to.equal(true);
-    });
-  });*/
+    });*/
+  });
 });
