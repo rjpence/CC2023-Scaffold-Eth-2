@@ -64,6 +64,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ProposalRewardChanged(_proposalReward);
 	}
 
+	// TODO: limit how many times a user can call this function per day
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
 	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
  		// Recover the signer from the signature
@@ -81,6 +82,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 	}
 
+	// TODO: store successfully proposed content items so that they cannot be proposed again
+	// TODO: think of a way to limit this—require a signed message from owner? store the source on-chain?
 	// Marked ext because it will make an external call to Chainlink Functions
 	function extProposeContentItem(
 		bytes32 _contentItemHash,

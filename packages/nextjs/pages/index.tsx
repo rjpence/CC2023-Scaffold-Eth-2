@@ -5,7 +5,7 @@ import type { NextPage } from "next";
 // Next.js types for typing components
 import { createPublicClient, http, keccak256, stringToBytes } from "viem";
 // Viem library functions for blockchain interactions
-import { hardhat } from "viem/chains";
+import { avalanche, avalancheFuji, hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
 import { useAccount, useSignMessage } from "wagmi";
 // Wagmi hooks for wallet account management and message signing
@@ -17,9 +17,38 @@ import { Address } from "~~/components/scaffold-eth/Address";
 import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
+import deployedContracts from "~~/contracts/deployedContracts";
+import { notification } from "~~/utils/scaffold-eth";
 
 // Creating a functional component for the homepage
 const Home: NextPage = () => {
+  const getChain = (chainName: string) => {
+    switch (chainName) {
+      case "hardhat":
+        return hardhat;
+      case "avalanche":
+        return avalanche;
+      case "avalancheFuji":
+        return avalancheFuji;
+      default:
+        throw new Error(`Chain ${chainName} not found`);
+    }
+  };  
+  const _publicClient = createPublicClient({
+          chain: hardhat,
+          transport: http(),
+  });
+  const yourContract = deployedContracts["43113"].YourContract;
+  const getEvents = async () => {
+    const events = await _publicClient.getContractEvents({
+      abi: yourContract.abi,
+      address: yourContract.address,
+      fromBlock: 28324189n,
+      toBlock: 28326189n,
+    });
+    return events;
+  }
+  
   const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
@@ -92,11 +121,64 @@ const Home: NextPage = () => {
   const chainlinkDONIdHex = "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000";
   const chainlinkSubscriptionId = 1632;
   const chainlinkFunctionsGasLimit = 300000;
+  const chainlinkFunctionsRequestSource =
+  'const url = "https://api.openai.com/v1/chat/completions";\n' +
+  'const openAIApiKey = "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";\n' +
+  'const contentItemUrl = args[0];\n' +
+  'const contentItemTitle = args[1];\n' +
+  'const messageContent =\n' +
+  '    `Your task is to determine whether, true or false, an item of web content ` +\n' +
+  '    `is likely to contain reliable information that improves or promotes financial literacy or financial well-being ` +\n' +
+  '    `using only the URL, "${contentItemUrl}", and the title, "${contentItemTitle}", for the web content. ` +\n' +
+  '    `You do not need to visit the URL or search online. ` +\n' +
+  '    `Return your response as either true or false in JSON. ` +\n' +
+  '    `To complete the task: ` +\n' +
+  '    `1. Read the URL. ` +\n' +
+  '    `2. Determine whether the URL is from a well - known and reputable source—do not guess or make anything up. ` +\n' +
+  '    `3. If the URL is not from a known and reputable source or you are unfamiliar with the source, return false. ` +\n' +
+  '    `4. If the URL is from a known and reputable source, read the title. ` +\n' +
+  '    `5. Determine whether, true or false, the title implies that the web content ` +\n' +
+  '    `improves or promotes financial literacy or financial well-being. ` +\n' +
+  '    `6. If the title does not imply that the web content improves or promotes ` +\n' +
+  '    `financial literacy or financial well-being, return false, otherwise return true.\\n` +\n' +
+  '    `Return your response in JSON as true or false.`;\n' +
+  'const data = {\n' +
+  '  model: "gpt-3.5-turbo-1106",\n' +
+  '  response_format: { type: "json_object" },\n' +
+  '  messages: [{ role: "system", content: messageContent }],\n' +
+  '  max_tokens: 256,\n' +
+  '  temperature: 0,\n' +
+  '  stream: false\n' +
+  '};\n' +
+  '\n' +
+  'const openAIRequest = Functions.makeHttpRequest({\n' +
+  '    url: url,\n' +
+  "    method: 'POST',\n" +
+  '    headers: {\n' +
+  "        'Content-Type': 'application/json',\n" +
+  "        'Authorization': `Bearer ${openAIApiKey}`\n" +
+  '    },\n' +
+  '    data: data,\n' +
+  '});\n' +
+  '\n' +
+  'const openAIResponse = await openAIRequest;\n' +
+  '\n' +
+  'if (openAIResponse.error) {\n' +
+  '  throw Error(JSON.stringify(openAIResponse));\n' +
+  '}\n' +
+  '\n' +
+  'const openAIResponseContent = JSON.parse(openAIResponse.data.choices[0].message.content);\n' +
+  '\n' +
+  'const isValid = Object.values(openAIResponseContent)[0] === "true" ? 1 : 0;\n' +
+  '\n' +
+  'return Functions.encodeUint256(isValid);';
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
     // Make sure the address is available before making the API call
     if (address && contentItemUrl.length === 0 && contentItemTitle.length === 0) getContentItem(); // Fetch content item if the address is available
+    const events = getEvents();
+    console.log("EVENTS FROM THE LIVE TESTNET:\n", events);
   }, [address]); // This effect runs whenever 'address' changes
 
   // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
@@ -144,7 +226,7 @@ const Home: NextPage = () => {
         console.log("Sending signed userAction transaction...");
 
         const publicClient = createPublicClient({
-          chain: hardhat,
+          chain: getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string),
           transport: http(),
         });
 
@@ -181,7 +263,7 @@ const Home: NextPage = () => {
       writeAsync({
         args: [
           proposedContentItemHash,
-          "return Functions.encodeUint256(4);", // source
+          chainlinkFunctionsRequestSource, // source
           "0x", // user hosted secrets - encryptedSecretsUrls - empty in this example
           0, // don hosted secrets - slot ID - empty in this example
           BigInt(0), // don hosted secrets - version - empty in this example
@@ -291,7 +373,7 @@ const Home: NextPage = () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
       },
-      body: JSON.stringify({ userAddress: address }),
+      body: JSON.stringify({ url: userInputUrl }),
     })
       .then(response => response.json())
       .then(data => {
@@ -334,6 +416,38 @@ const Home: NextPage = () => {
       logs.map(log => {
         const { _requestId, _contentItemHash } = log.args;
         console.log("📡 ValidationRequested event", _requestId, _contentItemHash);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "Response",
+    listener: logs => {
+      logs.map(log => {
+        const { requestId, response, err } = log.args;
+        console.log("📡 Chainlink Functions Response event", requestId, response, err);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ValidationResponseReceived",
+    listener: logs => {
+      logs.map(log => {
+        const { _requestId, _contentItemHash, _isContentItemValid } = log.args;
+        console.log("📡 ValidationResponseReceived event", _requestId, _contentItemHash, _isContentItemValid);
+        notification.error("Proposal rejected.", { icon: "❌" });
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ValidProposalRewarded",
+    listener: logs => {
+      logs.map(log => {
+        const { _proposer, _contentItemHash, _proposalReward, _totalProposerPoints } = log.args;
+        console.log("📡 ValidationResponseReceived event", _proposer, _contentItemHash, _proposalReward, _totalProposerPoints);
+        notification.success(`Proposal accepted! You earned ${_proposalReward} points!`, { icon: "🎉" });
       });
     },
   });
