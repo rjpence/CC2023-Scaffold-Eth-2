@@ -70,6 +70,11 @@ const Home: NextPage = () => {
     args: [address],
   });
 
+  const { data: totalRewards } = useScaffoldContractRead({
+    contractName: contractName,
+    functionName: "getTotalRewards",
+  });
+
   // More state management hooks for various pieces of data
   const [contentItemUrl, setContentItemUrl] = useState<string>("");
   // ... (similar useState declarations for other pieces of data like title, question, etc.)
@@ -447,6 +452,10 @@ const Home: NextPage = () => {
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h2>🤓 Total Items Consumed 📚</h2>
         <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        <h2>💰 Total Rewards to Distribute 💸</h2>
+        <div className="p-4 text-4xl">{totalRewards?.toString()}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h2>Total Points</h2>

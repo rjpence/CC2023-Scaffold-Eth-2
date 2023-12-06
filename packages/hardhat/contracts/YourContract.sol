@@ -31,6 +31,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
 
+	// Mock state variables for testing
+	uint256 internal totalRewards;
+
 	// For Chainlink Functions
 	bytes32 public s_lastRequestId;
     bytes public s_lastResponse;
@@ -58,6 +61,18 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
+		totalRewards = 1000 * 10**18;
+	}
+
+	// This function should actually call the token contract to get this contract's balance
+	function getTotalRewards() public view returns (uint256) {
+		// This function should 
+		return totalRewards;
+	}
+
+	// This function should be deleted after getTotalRewards is properly implemented
+	function setTotalRewards(uint256 _totalRewards) public onlyOwner {
+		totalRewards = _totalRewards;
 	}
 
 	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
