@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x1F82203300E3aE8B618068F46D3Ae55aa6fB5bE1",
+      address: "0x4039De7C4bAa31b0F93ad232c656DC3e8387AE7a",
       abi: [
         {
           inputs: [
@@ -60,6 +60,19 @@ const deployedContracts = {
           ],
           name: "UnexpectedRequestID",
           type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: false,
+              internalType: "string",
+              name: "_source",
+              type: "string",
+            },
+          ],
+          name: "ChainlinkFunctionsSourceChanged",
+          type: "event",
         },
         {
           anonymous: false,

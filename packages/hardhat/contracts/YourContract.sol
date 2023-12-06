@@ -46,6 +46,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ValidationResponseReceived(bytes32 indexed _requestId, bytes32 indexed _contentItemHash, bool _isContentItemValid);
 	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
 	event ProposalRewardChanged(uint256 _proposalReward);
+	event ChainlinkFunctionsSourceChanged(string _source);
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -61,6 +62,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
 		chainlinkFunctionsSource = _source;
+
+		emit ChainlinkFunctionsSourceChanged(_source);
 	}
 
 	function setProposalReward(uint256 _proposalReward) public onlyOwner {
@@ -75,6 +78,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
+		// Key centrally-added content items to the owner so that they cannot be proposed
+		if (hashesToProposers[_contentItemHash] == address(0)) hashesToProposers[_contentItemHash] = msg.sender;
+
         // Ensure the signer is _user
         require(signer == _user, "Invalid signature");
 		
@@ -88,7 +94,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	}
 
 	// TODO: store successfully proposed content items so that they cannot be proposed again
-	// TODO: think of a way to limit this—require a signed message from owner? store the source on-chain?
+	// TODO: require users to pay the LINK for the Chainlink Functions call
+	// TODO: confirm that the hash of the contentItemArgs matches _contentItemHash
 	// Marked ext because it will make an external call to Chainlink Functions
 	function extProposeContentItem(
 		bytes32 _contentItemHash,
