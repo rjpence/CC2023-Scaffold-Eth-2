@@ -5,7 +5,7 @@ import type { NextPage } from "next";
 // Next.js types for typing components
 import { createPublicClient, http, keccak256, stringToBytes } from "viem";
 // Viem library functions for blockchain interactions
-import { hardhat } from "viem/chains";
+import { avalanche, avalancheFuji, hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
 import { useAccount, useSignMessage } from "wagmi";
 // Wagmi hooks for wallet account management and message signing
@@ -17,9 +17,38 @@ import { Address } from "~~/components/scaffold-eth/Address";
 import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
+import deployedContracts from "~~/contracts/deployedContracts";
+import { notification } from "~~/utils/scaffold-eth";
 
 // Creating a functional component for the homepage
 const Home: NextPage = () => {
+  const getChain = (chainName: string) => {
+    switch (chainName) {
+      case "hardhat":
+        return hardhat;
+      case "avalanche":
+        return avalanche;
+      case "avalancheFuji":
+        return avalancheFuji;
+      default:
+        throw new Error(`Chain ${chainName} not found`);
+    }
+  };  
+  const _publicClient = createPublicClient({
+          chain: hardhat,
+          transport: http(),
+  });
+  const yourContract = deployedContracts["43113"].YourContract;
+  const getEvents = async () => {
+    const events = await _publicClient.getContractEvents({
+      abi: yourContract.abi,
+      address: yourContract.address,
+      fromBlock: 28324189n,
+      toBlock: 28326189n,
+    });
+    return events;
+  }
+  
   const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
@@ -66,7 +95,18 @@ const Home: NextPage = () => {
   const { writeAsync } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "extProposeContentItem",
-    args: [undefined, undefined, undefined],
+    args: [
+      undefined,
+      // undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ],
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
       setProposeTransactionHash(txnReceipt.transactionHash);
@@ -78,11 +118,16 @@ const Home: NextPage = () => {
       setFetchTitleErrorMessage(capitalizedMessage);
     },
   });
+  const chainlinkDONIdHex = "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000";
+  const chainlinkSubscriptionId = 1632;
+  const chainlinkFunctionsGasLimit = 300000;
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
     // Make sure the address is available before making the API call
     if (address && contentItemUrl.length === 0 && contentItemTitle.length === 0) getContentItem(); // Fetch content item if the address is available
+    const events = getEvents();
+    console.log("EVENTS FROM THE LIVE TESTNET:\n", events);
   }, [address]); // This effect runs whenever 'address' changes
 
   // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
@@ -104,12 +149,11 @@ const Home: NextPage = () => {
           signedContentItemHash: signedContentItemHash,
         };
 
-        // TODO: move API URL to .env file
-        fetch("http://localhost:50321/functions/v1/contentConsumptionProver", {
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/contentConsumptionProver`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
           },
           body: JSON.stringify(contentConsumptionProverData),
         })
@@ -131,7 +175,7 @@ const Home: NextPage = () => {
         console.log("Sending signed userAction transaction...");
 
         const publicClient = createPublicClient({
-          chain: hardhat,
+          chain: getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string),
           transport: http(),
         });
 
@@ -159,13 +203,26 @@ const Home: NextPage = () => {
     if (fetchedTitle.length > 0) {
       console.log("fetchedTitle has been updated:", fetchedTitle);
 
-      const proposeContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
+      const proposedContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
 
       console.log("Sending proposeContentItem transaction to blockchain...");
-      console.log("... proposeContentItemHash:", proposeContentItemHash);
+      console.log("... proposeContentItemHash:", proposedContentItemHash);
       console.log("... userInputUrl:", userInputUrl);
       console.log("... fetchedTitle:", fetchedTitle);
-      writeAsync({ args: [proposeContentItemHash, userInputUrl, fetchedTitle] });
+      writeAsync({
+        args: [
+          proposedContentItemHash,
+          // chainlinkFunctionsRequestSource, // source
+          "0x", // user hosted secrets - encryptedSecretsUrls - empty in this example
+          0, // don hosted secrets - slot ID - empty in this example
+          BigInt(0), // don hosted secrets - version - empty in this example
+          [userInputUrl, fetchedTitle], // contentItemArgs
+          [], // bytesArgs - arguments can be encoded off-chain to bytes.
+          BigInt(chainlinkSubscriptionId),
+          chainlinkFunctionsGasLimit,
+          chainlinkDONIdHex, // jobId is bytes32 representation of donId
+        ],
+      });
     }
   }, [fetchedTitle]);
 
@@ -201,13 +258,11 @@ const Home: NextPage = () => {
   // Function to fetch a content item from an API
   const getContentItem = () => {
     try {
-      // TODO: move API URL to .env file
-      fetch("http://localhost:50321/functions/v1/contentItemServer", {
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/contentItemServer`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // TODO: move bearer token to .env file
-          Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
         },
         body: JSON.stringify({ userAddress: address }),
       })
@@ -261,15 +316,13 @@ const Home: NextPage = () => {
 
   // Function to fetch the title of a URL from an API
   const getURLTitle = () => {
-    // TODO: move API URL to .env file
-    fetch("http://localhost:50321/functions/v1/proposedContentTitleGetter", {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_API_URL}/functions/v1/proposedContentTitleGetter`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // TODO: move bearer token to .env file
-        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`,
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_BACKEND_API_TOKEN}`,
       },
-      body: JSON.stringify({ userAddress: address }),
+      body: JSON.stringify({ url: userInputUrl }),
     })
       .then(response => response.json())
       .then(data => {
@@ -300,8 +353,8 @@ const Home: NextPage = () => {
     eventName: "ContentItemProposed",
     listener: logs => {
       logs.map(log => {
-        const { _proposer, _contentItemHash, _url, _title } = log.args;
-        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _url, _title);
+        const { _proposer, _contentItemHash, _contentItemArgs } = log.args;
+        console.log("📡 ContentItemProposed event", _proposer, _contentItemHash, _contentItemArgs);
       });
     },
   });
@@ -311,7 +364,39 @@ const Home: NextPage = () => {
     listener: logs => {
       logs.map(log => {
         const { _requestId, _contentItemHash } = log.args;
-        console.log("📡 ContentItemProposed event", _requestId, _contentItemHash);
+        console.log("📡 ValidationRequested event", _requestId, _contentItemHash);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "Response",
+    listener: logs => {
+      logs.map(log => {
+        const { requestId, response, err } = log.args;
+        console.log("📡 Chainlink Functions Response event", requestId, response, err);
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ValidationResponseReceived",
+    listener: logs => {
+      logs.map(log => {
+        const { _requestId, _contentItemHash, _isContentItemValid } = log.args;
+        console.log("📡 ValidationResponseReceived event", _requestId, _contentItemHash, _isContentItemValid);
+        notification.error("Proposal rejected.", { icon: "❌" });
+      });
+    },
+  });
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "ValidProposalRewarded",
+    listener: logs => {
+      logs.map(log => {
+        const { _proposer, _contentItemHash, _proposalReward, _totalProposerPoints } = log.args;
+        console.log("📡 ValidationResponseReceived event", _proposer, _contentItemHash, _proposalReward, _totalProposerPoints);
+        notification.success(`Proposal accepted! You earned ${_proposalReward} points!`, { icon: "🎉" });
       });
     },
   });
