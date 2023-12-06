@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x95A13B7F46f569B0633Cc48c42103F526c269d4F",
+      address: "0x1F82203300E3aE8B618068F46D3Ae55aa6fB5bE1",
       abi: [
         {
           inputs: [
@@ -296,16 +296,24 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "chainlinkFunctionsSource",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "bytes32",
               name: "_contentItemHash",
               type: "bytes32",
-            },
-            {
-              internalType: "string",
-              name: "_source",
-              type: "string",
             },
             {
               internalType: "bytes",
@@ -496,6 +504,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_source",
+              type: "string",
+            },
+          ],
+          name: "setChainlinkFunctionsSource",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -578,7 +599,7 @@ const deployedContracts = {
   },
   43113: {
     YourContract: {
-      address: "0x39b293bCc0106E6808311fC4D3E48Ef67A0C89C8",
+      address: "0x9318fFf8C5Bd8ff92c49a501B9981721528496e9",
       abi: [
         {
           inputs: [
@@ -867,16 +888,24 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [],
+          name: "chainlinkFunctionsSource",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [
             {
               internalType: "bytes32",
               name: "_contentItemHash",
               type: "bytes32",
-            },
-            {
-              internalType: "string",
-              name: "_source",
-              type: "string",
             },
             {
               internalType: "bytes",
@@ -1067,6 +1096,19 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_source",
+              type: "string",
+            },
+          ],
+          name: "setChainlinkFunctionsSource",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {

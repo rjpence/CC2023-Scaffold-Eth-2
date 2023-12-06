@@ -35,6 +35,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	bytes32 public s_lastRequestId;
     bytes public s_lastResponse;
     bytes public s_lastError;
+	string public chainlinkFunctionsSource;
 
 	// For Chainlink Functions
     error UnexpectedRequestID(bytes32 requestId);
@@ -56,6 +57,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
+	}
+
+	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
+		chainlinkFunctionsSource = _source;
 	}
 
 	function setProposalReward(uint256 _proposalReward) public onlyOwner {
@@ -87,7 +92,6 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	// Marked ext because it will make an external call to Chainlink Functions
 	function extProposeContentItem(
 		bytes32 _contentItemHash,
-		string memory _source,
         bytes memory _encryptedSecretsUrls,
         uint8 _donHostedSecretsSlotID,
         uint64 _donHostedSecretsVersion,
@@ -103,7 +107,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 		// Send _url and _title to Chainlink Functions to validate the propriety of the content item
 		bytes32 requestId = sendValidationRequest(
-			_source,
+			chainlinkFunctionsSource,
 			_encryptedSecretsUrls,
 			_donHostedSecretsSlotID,
 			_donHostedSecretsVersion,
