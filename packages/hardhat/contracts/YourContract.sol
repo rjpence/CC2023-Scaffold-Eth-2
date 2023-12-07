@@ -21,18 +21,23 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	using ECDSA for bytes32;
 	using FunctionsRequest for FunctionsRequest.Request;
 
+	struct User {
+		uint256 points;
+		uint256 rewards;
+		uint256 lastRewardsPerPoint;
+	}
 
 	// State Variables
 	// address public override owner;
 	uint256 public totalPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
 	uint256 public proposalReward; // configurable reward for proposing a valid content item
-	mapping (address => uint) public points; // points per user
+	mapping (address => User) public users;
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
 
-	// Mock state variables for testing
-	uint256 internal totalRewards;
+	uint256 public distributableRewards;
+	uint256 public totalRewardsPerPoint;
 
 	// For Chainlink Functions
 	bytes32 public s_lastRequestId;
@@ -50,6 +55,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
 	event ProposalRewardChanged(uint256 _proposalReward);
 	event ChainlinkFunctionsSourceChanged(string _source);
+	event IndividualRewardsDistributed(address indexed _user, uint256 _points, uint256 _totalRewardsPerPoint);
+	event RewardsDistributed(uint256 _previousTotalRewardsPerPoint, uint256 _totalRewardsPerPoint, uint256 _previousDistributableRewards, uint256 _totalPoints);
+	event DistributableRewardsAdded(address index _by, uint256 _amount);
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -61,18 +69,60 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
-		totalRewards = 1000 * 10**18;
 	}
 
-	// This function should actually call the token contract to get this contract's balance
-	function getTotalRewards() public view returns (uint256) {
-		// This function should 
-		return totalRewards;
+	function withdrawRewards() public {
+		// Distribute rewards to the user based on the points they have accumulated
+		// since the last time they were distributed and
+		// reset the lastRewardsPerPoint to the current totalRewardsPerPoint
+		// (as the new floor for the user's per point rewards)
+		_distributeIndividualRewards(msg.sender);
+
+		User storage user = users[msg.sender];
+
+		require(user.rewards > 0, "No rewards to withdraw");
+
+		// TODO: transfer from this contract to msg.sender
+		uint256 amount = user.rewards;
+		user.rewards = 0;
+
+		emit RewardsWithdrawn(msg.sender, amount);
 	}
 
-	// This function should be deleted after getTotalRewards is properly implemented
-	function setTotalRewards(uint256 _totalRewards) public onlyOwner {
-		totalRewards = _totalRewards;
+	// The contract distributes the rewards by points
+	function distributeRewards() public {
+		// TODO: confirm that 18 decimals is the correct amount
+		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
+		require(totalPoints > 0, "No points to distribute rewards");
+		
+		uint256 previousTotalRewardsPerPoint = totalRewardsPerPoint;
+		uint256 previousDistributableRewards = distributableRewards;
+		totalRewardsPerPoint += previousDistributableRewards / totalPoints;
+		distributableRewards = 0;
+
+		emit RewardsDistributed(previousTotalRewardsPerPoint, totalRewardsPerPoint, previousDistributableRewards, totalPoints);
+	}
+
+	// Distribute rewards to the user based on the points they have accumulated
+	// since the last time they were distributed and
+	// reset the lastRewardsPerPoint to the current totalRewardsPerPoint (as the new floor for the user's per point rewards)
+	function _distributeIndividualRewards(address _user) private {
+		User storage user = users[_user];
+		user.rewards += user.points * (totalRewardsPerPoint - user.lastRewardsPerPoint);
+		user.lastRewardsPerPoint = totalRewardsPerPoint;
+		
+		emit IndividualRewardsDistributed(_user, user.points, totalRewardsPerPoint);
+	}
+
+	// This function lets the contract know that there are _amount new rewards available
+	// This function should call the token contract to transfer _amount
+	// from the caller to the contract
+	function addDistributableRewards(uint256 _amount) public {
+		// TODO: transfer _amount from msg.sender to this contract
+
+		distributableRewards += _amount;
+
+		emit DistributableRewardsAdded(msg.sender, _amount);
 	}
 
 	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
@@ -101,9 +151,15 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		
 		_contentItemHash;
 		_signedContentItemHash;
-		totalPoints +=1;
 		totalItemsConsumed +=1;
-		points[_user] += 1;
+
+		User storage user = users[_user];
+
+		// Distribute rewards to the user based on the points they have accumulated
+		if (user.lastRewardsPerPoint != totalRewardsPerPoint) _distributeIndividualRewards(_user);
+
+		totalPoints +=1;
+		users[_user].points += 1;
 
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 	}
@@ -161,10 +217,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	}
 
 	function _rewardValidProposal(address _proposer, bytes32 _contentItemHash) private {
-		points[_proposer] += proposalReward;
+		users[_proposer].points += proposalReward;
 		totalPoints += proposalReward;
 
-		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, points[_proposer]);
+		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, users[_proposer].points);
 	}
 
 	// Chainlink Functions functions
