@@ -15,9 +15,29 @@ const deployerPrivateKey =
 // If not set, it uses ours Etherscan default API key.
 const etherscanApiKey = process.env.ETHERSCAN_API_KEY || "DNXJA8RX2Q3VZ4URQIWP7Z68CJXQZSC6AW";
 
+// Forking Avalanche Mainnet or Fuji
+// When using the hardhat network, you may choose to fork Fuji or Avalanche Mainnet
+// This will allow you to debug contracts using the hardhat network while keeping the current network state
+// To enable forking, turn one of these booleans on, and then run your tasks/scripts using ``--network hardhat``
+// For more information go to the hardhat guide
+// https://hardhat.org/hardhat-network/
+// https://hardhat.org/guides/mainnet-forking.html
+// See https://docs.avax.network/build/dapp/smart-contracts/toolchains/hardhat
+const FORK_FUJI = true;
+const FORK_MAINNET = false;
+const forkingData = FORK_FUJI
+  ? {
+      url: "https://api.avax-test.network/ext/bc/C/rpc",
+    }
+  : FORK_MAINNET
+  ? {
+      url: "https://api.avax.network/ext/bc/C/rpc",
+    }
+  : undefined;
+
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.17",
+    version: "0.8.19",
     settings: {
       optimizer: {
         enabled: true,
@@ -37,10 +57,10 @@ const config: HardhatUserConfig = {
     // View the networks that are pre-configured.
     // If the network you are looking for is not here you can add new network settings
     hardhat: {
-      forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${providerApiKey}`,
-        enabled: process.env.MAINNET_FORKING_ENABLED === "true",
-      },
+      gasPrice: 225000000000,
+      // chainId: !forkingData ? 43112 : undefined, //Only specify a chainId if we are not forking
+      chainId: 31337,
+      forking: forkingData,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${providerApiKey}`,
@@ -122,8 +142,11 @@ const config: HardhatUserConfig = {
       url: "https://rpc.scroll.io",
       accounts: [deployerPrivateKey],
     },
+    // From https://docs.avax.network/build/dapp/smart-contracts/toolchains/hardhat
     avalancheFuji: {
-      url: " https://api.avax-test.network/ext/bc/C/rpc",
+      url: "https://api.avax-test.network/ext/bc/C/rpc",
+      gasPrice: 225000000000,
+      chainId: 43113,
       accounts: [deployerPrivateKey],
     },
   },
