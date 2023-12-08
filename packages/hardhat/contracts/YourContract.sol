@@ -57,7 +57,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ChainlinkFunctionsSourceChanged(string _source);
 	event IndividualRewardsDistributed(address indexed _user, uint256 _points, uint256 _totalRewardsPerPoint);
 	event RewardsDistributed(uint256 _previousTotalRewardsPerPoint, uint256 _totalRewardsPerPoint, uint256 _previousDistributableRewards, uint256 _totalPoints);
-	event DistributableRewardsAdded(address index _by, uint256 _amount);
+	event DistributableRewardsAdded(address indexed _by, uint256 _amount);
+	event RewardsWithdrawn(address indexed _user, uint256 _amount);
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -70,6 +71,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
 	}
+
+	// TODO: add a function to show a user the rewards they can withdraw
 
 	function withdrawRewards() public {
 		// Distribute rewards to the user based on the points they have accumulated
