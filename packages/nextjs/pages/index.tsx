@@ -106,7 +106,7 @@ const Home: NextPage = () => {
   const [isTitleFetched, setIsTitleFetched] = useState<boolean>(false);
   const [fetchTitleErrorMessage, setFetchTitleErrorMessage] = useState<string>("");
   const [proposeTransactionHash, setProposeTransactionHash] = useState<string>("");
-  const [distributeRewardsTransactionHash, setDistributeRewardsTransactionHash] = useState<string>("");
+  const [endEpochTransactionHash, setEndEpochTransactionHash] = useState<string>("");
   const { writeAsync: proposeContentItem } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "extProposeContentItem",
@@ -134,13 +134,13 @@ const Home: NextPage = () => {
     },
   });
 
-  const { writeAsync: distributeRewards } = useScaffoldContractWrite({
+  const { writeAsync: endEpoch } = useScaffoldContractWrite({
     contractName: contractName,
-    functionName: "distributeRewards",
+    functionName: "endEpoch",
     onBlockConfirmation: txnReceipt => {
-      console.log("distributeRewards transaction confirmed:", txnReceipt.transactionHash);
-      setDistributeRewardsTransactionHash(txnReceipt.transactionHash);
-      console.log("distributeRewards transaction hash", txnReceipt.transactionHash);
+      console.log("endEpoch transaction confirmed:", txnReceipt.transactionHash);
+      setEndEpochTransactionHash(txnReceipt.transactionHash);
+      console.log("endEpoch transaction hash", txnReceipt.transactionHash);
     },
   });
 
@@ -149,7 +149,7 @@ const Home: NextPage = () => {
   const chainlinkFunctionsGasLimit = 300000;
 
   useEffect(() => {
-    if (distributableRewards && Number(distributableRewards) >= 1 * 10 ** 18) {
+    if (distributableRewards && Number(distributableRewards) >= 1 * 10 ** 18 && totalPoints && Number(totalPoints) > 0) {
       console.log("distributableRewards:", distributableRewards);
       setIsDistributable(true);
     } else {
@@ -175,7 +175,7 @@ const Home: NextPage = () => {
         });
       });
     }
-  }, [address, consumeTransactionHash, distributeRewardsTransactionHash]);
+  }, [address, consumeTransactionHash, endEpochTransactionHash]);
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
@@ -299,10 +299,10 @@ const Home: NextPage = () => {
     }
   };
 
-  const handleDistributeRewards = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleEndEpoch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log("Calling distributeRewards...");
-    distributeRewards();
+    console.log("Calling endEpoch...");
+    endEpoch();
   };
 
   const validateAnswer = (answer: string): boolean => {
@@ -507,7 +507,7 @@ const Home: NextPage = () => {
         <h1>Financial Literacy Dapp</h1>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>⏳ Epoch Started ⏰</h2>
+        <h2>⏳ Epoch Started</h2>
         <div className="p-4 text-4xl">{new Date(Number(epochTimestamp) * 1000).toDateString()}</div>
         <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
@@ -552,10 +552,11 @@ const Home: NextPage = () => {
         <h2>💰 Total Rewards to Distribute 💸</h2>
         <div className="p-4 text-4xl">{distributableRewards?.toString()}</div>
         <div className="flex items-center flex-col flex-grow pt=10 my-10">
-          <form onSubmit={handleDistributeRewards} className="flex flex-col items-center">
+          <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
             <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
-              Distribute Rewards ✨
+              End Epoch 👩‍⚖️
             </button>
+            <div><p>This will distribute the distributable rewards.</p></div>
           </form>
         </div>
       </div>

@@ -60,6 +60,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event RewardsDistributed(uint256 _previousTotalRewardsPerPoint, uint256 _totalRewardsPerPoint, uint256 _previousDistributableRewards, uint256 _totalPoints);
 	event DistributableRewardsAdded(address indexed _by, uint256 _amount);
 	event RewardsWithdrawn(address indexed _user, uint256 _amount);
+	event EpochEnded();
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -94,8 +95,18 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit RewardsWithdrawn(msg.sender, amount);
 	}
 
+	function endEpoch() public {
+		// Distribute the remaining rewards to all users
+		_distributeRewards();
+
+		// Reset the epochTimestamp
+		epochTimestamp = block.timestamp;
+
+		emit EpochEnded();
+	}
+
 	// The contract distributes the rewards by points
-	function distributeRewards() public {
+	function _distributeRewards() private {
 		// TODO: confirm that 18 decimals is the correct amount
 		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
 		require(totalPoints > 0, "No points to distribute rewards");
