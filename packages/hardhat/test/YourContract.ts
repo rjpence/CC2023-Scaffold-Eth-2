@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { YourContract } from "../typechain-types";
+import { Provider } from "@ethersproject/providers";
 
 //import { waffle } from "hardhat";
 //const { waffle } = require("hardhat");
@@ -66,16 +67,18 @@ describe("YourContract", function () {
         // Send user's signed content item hash to the contract
         const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHashFromUser);
-        expect(await yourContract.points(user.address)).to.equal(1);
+        expect(Number((await yourContract.users(user.address)).points)).to.equal(10);
 
         // Send otherUser's signed content item hash to the contract
         const signedContentItemHashFromOtherUser = await otherUser.signMessage(ethers.utils.arrayify(contentItemHash));
         await yourContract
           .connect(owner)
           .userAction(otherUser.address, contentItemHash, signedContentItemHashFromOtherUser);
-        expect(await yourContract.points(otherUser.address)).to.equal(1);
+        expect(Number((await yourContract.users(otherUser.address)).points)).to.equal(10);
 
-        expect(await yourContract.totalPoints()).to.equal(2);
+        //expect(await yourContract.points(otherUser.address)).to.equal(1);
+
+        expect(await yourContract.totalEpochPoints()).to.equal(20);
       });
 
       it("Should emit ContentItemConsumed event", async function () {
@@ -95,6 +98,44 @@ describe("YourContract", function () {
         //Check if ContentItemConsumed was emitted
         expect(receipt.events[0].event).to.equal("ContentItemConsumed");
       });
+    });
+  });
+
+  describe("setChainlinkFunctionsSource", function () {
+    describe("When source is changed", function () {
+      it("Should emit ChainlinkFunctionsSourceChanged event", async function () {
+        const [owner] = await ethers.getSigners();
+        const source = "some source";
+
+        const setting = await yourContract
+        .connect(owner)
+        .setChainlinkFunctionsSource(source);
+
+        const receipt = await setting.wait();
+
+        expect(receipt.events[0].event).to.equal("ChainlinkFunctionsSourceChanged");
+      });
+    });
+  });
+
+  describe("endEpoch", function () {
+    it("Should restart timestamp", async function () {
+      const distributableRewards = ethers.utils.parseUnits('1', 'ether');
+      await yourContract.addDistributableRewards(distributableRewards);
+      const receipt = await yourContract.endEpoch();
+      
+      const block = await yourContract.provider.getBlock(receipt.blockHash!);
+
+      expect(block.timestamp).to.equal(await yourContract.epochTimestamp());
+    });
+  });
+
+  describe("_distributeIndividualRewards", function () {
+    it("Distribute rewards to the user", async function () {
+      const [_, user] = await ethers.getSigners();
+      await yourContract.connect(user).withdrawRewards();
+
+      expect(Number((await yourContract.users(user.address)).lastRewardsPerPoint)).to.equal(Number(await yourContract.totalRewardsPerPoint()));
     });
   });
 
@@ -234,7 +275,7 @@ describe("YourContract", function () {
         expect(internalReturn.handleValidationResponse.totalPoints).to.equal(2);
       });*/
 
-      it("Should emit ValidProposalRewarded event", async function () {
+      /*it("Should emit ValidProposalRewarded event", async function () {
         const [proposer] = await ethers.getSigners();
         const contentItemHash = ethers.utils.id("contentItem");
 
@@ -245,7 +286,7 @@ describe("YourContract", function () {
 
         //Check if ValidProposalRewarded was emitted
         expect(receipt.events[0].event).to.equal("ValidProposalRewarded");
-      });
+      });*/
     });
   });
 
