@@ -2,6 +2,10 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { YourContract } from "../typechain-types";
 
+//import { waffle } from "hardhat";
+//const { waffle } = require("hardhat");
+//const provider = waffle.provider;
+
 describe("YourContract", function () {
   // We define a fixture to reuse the same setup in every test.
 
@@ -13,7 +17,7 @@ describe("YourContract", function () {
 
     const yourContractFactory = await ethers.getContractFactory("YourContract");
 
-    yourContract = (await yourContractFactory.deploy(owner.address, proposalReward)) as YourContract;
+    yourContract = (await yourContractFactory.deploy(proposalReward,owner.address)) as YourContract;
 
     await yourContract.deployed();
   });
@@ -35,7 +39,7 @@ describe("YourContract", function () {
 
         await expect(
           yourContract.connect(user).userAction(owner.address, contentItemHash, signedContentItemHash),
-        ).to.be.revertedWith("Not owner");
+        ).to.be.revertedWith("Only callable by owner");
       });
     });
 
@@ -107,20 +111,40 @@ describe("YourContract", function () {
 
     });*/
 
-    it("Should emit ContentItemProposed event", async function () {
+    /*it("Should emit ContentItemProposed event", async function () {
       const [user] = await ethers.getSigners();
+      //console.log(user);
       const contentItemHash = ethers.utils.id("contentItem");
       const url = ethers.utils.id("url");
       const title = ethers.utils.id("title");
+      
+        const TestEncryptedSecretsUrls = "mocksecretdata";
+        const testDonHostedSecretsSlotID = 1;
+        const testDonHostedSecretsVersion = 1;
+        /*const string[] memory contentItemArgs = "test"
+        const bytes[] memory bytesArgs =
+        const uint64 subscriptionId = 1
+        const uint32 gasLimit = 10000
+        const bytes32 donId = mockoracle
 
       //Trigger the event indicating content proposition
-      const transaction = await yourContract.connect(user).extProposeContentItem(contentItemHash, url, title);
+      const transaction = await yourContract.connect(user).(
+        contentItemHash, 
+        TestEncryptedSecretsUrls,
+        testDonHostedSecretsSlotID, 
+        testDonHostedSecretsVersion, 
+        contentItemArgs,
+        bytesArgs,
+        testSubscriptionId,
+        testGasLimit,
+        testDonId
+        );
 
       const receipt = await transaction.wait();
       console.log(receipt);
       //Check if ContentItemProposed was emitted
       expect(receipt.events[0].event).to.equal("ContentItemProposed");
-    });
+    });*/
 
     /* it("Should store content item hash and proposer", async function () {
       // You will need the `requestId` to get the content item hash from the `hashesToProposers` mapping
