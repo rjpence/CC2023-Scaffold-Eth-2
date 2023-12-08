@@ -466,6 +466,56 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
+              indexed: false,
+              internalType: "uint256",
+              name: "_previousTotalRewardsPerPoint",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_totalRewardsPerPoint",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_previousDistributableRewards",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_totalPoints",
+              type: "uint256",
+            },
+          ],
+          name: "RewardsDistributed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+          ],
+          name: "RewardsWithdrawn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
               indexed: true,
               internalType: "address",
               name: "_user",
@@ -638,6 +688,39 @@ const deployedContracts = {
         {
           inputs: [],
           name: "eligibleUsersCounter",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "endEpoch",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "epochTimestamp",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "distributableRewards",
           outputs: [
             {
               internalType: "uint256",
@@ -1250,6 +1333,57 @@ const deployedContracts = {
               internalType: "uint64",
               name: "",
               type: "uint64",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "withdrawRewards",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "users",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "points",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "rewards",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "lastRewardsPerPoint",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "latestConsumptionTimestamp",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "epochEntryPoints",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "epochPoints",
+              type: "uint256",
             },
           ],
           stateMutability: "view",

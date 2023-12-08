@@ -20,7 +20,6 @@ import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubs
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 import { notification } from "~~/utils/scaffold-eth";
 
-
 type User = {
   points: number;
   rewards: number;
