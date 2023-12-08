@@ -32,6 +32,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	uint256 public totalPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
 	uint256 public proposalReward; // configurable reward for proposing a valid content item
+	uint256 public epochTimestamp; // timestamp of when the current epoch began
 	mapping (address => User) public users;
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
@@ -70,6 +71,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
+		epochTimestamp = block.timestamp;
 	}
 
 	// TODO: add a function to show a user the rewards they can withdraw

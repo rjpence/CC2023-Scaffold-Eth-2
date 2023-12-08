@@ -20,7 +20,6 @@ import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubs
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 import { notification } from "~~/utils/scaffold-eth";
 
-
 type User = {
   points: number;
   rewards: number;
@@ -74,10 +73,13 @@ const Home: NextPage = () => {
     contractName: contractName,
     functionName: "totalItemsConsumed",
   });
-
   const { data: distributableRewards } = useScaffoldContractRead({
     contractName: contractName,
     functionName: "distributableRewards",
+  });
+  const { data: epochTimestamp } = useScaffoldContractRead({
+    contractName: contractName,
+    functionName: "epochTimestamp",
   });
 
   // More state management hooks for various pieces of data
@@ -147,7 +149,7 @@ const Home: NextPage = () => {
   const chainlinkFunctionsGasLimit = 300000;
 
   useEffect(() => {
-    if (distributableRewards && Number(distributableRewards) >= 1*10**18) {
+    if (distributableRewards && Number(distributableRewards) >= 1 * 10 ** 18) {
       console.log("distributableRewards:", distributableRewards);
       setIsDistributable(true);
     } else {
@@ -392,6 +394,20 @@ const Home: NextPage = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  function convertTimestampToUTCTimeString(timestamp: number): string {
+    const date = new Date(timestamp * 1000);
+
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    const seconds = date.getUTCSeconds();
+
+    // Format the time components into a string
+    // This will display time in HH:MM:SS format
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
   useScaffoldEventSubscriber({
     contractName: contractName,
     eventName: "ContentItemConsumed",
@@ -461,13 +477,14 @@ const Home: NextPage = () => {
       });
     },
   });
-  
+
   useScaffoldEventSubscriber({
     contractName: contractName,
     eventName: "RewardsDistributed",
     listener: logs => {
       logs.map(log => {
-        const { _previousTotalRewardsPerPoint, _totalRewardsPerPoint, _previousDistributableRewards, _totalPoints } = log.args;
+        const { _previousTotalRewardsPerPoint, _totalRewardsPerPoint, _previousDistributableRewards, _totalPoints } =
+          log.args;
         console.log(
           "📡 RewardsDistributed event",
           _previousTotalRewardsPerPoint,
@@ -488,6 +505,11 @@ const Home: NextPage = () => {
       {/* JSX code to render various parts of the page like links, forms, counters, etc. */}
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h1>Financial Literacy Dapp</h1>
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        <h2>⏳ Epoch Started ⏰</h2>
+        <div className="p-4 text-4xl">{new Date(Number(epochTimestamp) * 1000).toDateString()}</div>
+        <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         {contentItemUrl && contentItemTitle && (
