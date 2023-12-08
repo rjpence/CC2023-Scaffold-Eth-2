@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
           inputs: [
@@ -673,8 +673,21 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+          ],
+          name: "tattle",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
-          name: "totalItemsConsumed",
+          name: "totalEpochPoints",
           outputs: [
             {
               internalType: "uint256",
@@ -687,7 +700,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "totalPoints",
+          name: "totalItemsConsumed",
           outputs: [
             {
               internalType: "uint256",
@@ -770,6 +783,21 @@ const deployedContracts = {
             {
               internalType: "uint256",
               name: "lastRewardsPerPoint",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "latestConsumptionTimestamp",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "epochEntryPoints",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "epochPoints",
               type: "uint256",
             },
           ],

@@ -25,11 +25,14 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		uint256 points;
 		uint256 rewards;
 		uint256 lastRewardsPerPoint;
+		uint256 latestConsumptionTimestamp;
+		uint256 epochEntryPoints;
+		uint256 epochPoints;
 	}
 
 	// State Variables
 	// address public override owner;
-	uint256 public totalPoints; // total points among all users
+	uint256 public totalEpochPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
 	uint256 public proposalReward; // configurable reward for proposing a valid content item
 	uint256 public epochTimestamp; // timestamp of when the current epoch began
@@ -109,14 +112,14 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	function _distributeRewards() private {
 		// TODO: confirm that 18 decimals is the correct amount
 		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
-		require(totalPoints > 0, "No points to distribute rewards");
+		require(totalEpochPoints > 0, "No points to distribute rewards");
 		
 		uint256 previousTotalRewardsPerPoint = totalRewardsPerPoint;
 		uint256 previousDistributableRewards = distributableRewards;
-		totalRewardsPerPoint += previousDistributableRewards / totalPoints;
+		totalRewardsPerPoint += previousDistributableRewards / totalEpochPoints;
 		distributableRewards = 0;
 
-		emit RewardsDistributed(previousTotalRewardsPerPoint, totalRewardsPerPoint, previousDistributableRewards, totalPoints);
+		emit RewardsDistributed(previousTotalRewardsPerPoint, totalRewardsPerPoint, previousDistributableRewards, totalEpochPoints);
 	}
 
 	// Distribute rewards to the user based on the points they have accumulated
@@ -153,9 +156,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ProposalRewardChanged(_proposalReward);
 	}
 
-	// TODO: limit how many times a user can call this function per day
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
 	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
+		// TODO: Make the number of points a constant or a configurable value
+		uint256 consumptionPoints = 10;
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
@@ -174,10 +178,42 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		// Distribute rewards to the user based on the points they have accumulated
 		if (user.lastRewardsPerPoint != totalRewardsPerPoint) _distributeIndividualRewards(_user);
 
-		totalPoints +=1;
-		users[_user].points += 1;
+		// Total consumption is tracked, so that users can benefit in future epochs
+		// even if they do not maintain eligibility in the current epoch
+		user.points += consumptionPoints;
+
+		// A users's accumulated points are used for distributing rewards
+		// even from epochs where the user was not eligible, to reward long-term participation
+		// We separately points added in the epoch to facilitate rewarding tattlers (want a better name for this!)
+		if (block.timestamp <= epochTimestamp + 1 days) {
+			user.epochEntryPoints = user.points;
+			user.epochPoints = user.points;
+			totalEpochPoints += user.points;
+		}
+		// The user's points only count towards the current epoch if they have consumed content
+		// daily in the current epoch—if they do not already have any epoch points then
+		// they must not have consumed content in the current epoch
+		else if (
+			user.epochPoints > 0 &&
+			block.timestamp <= user.latestConsumptionTimestamp + 1 days
+		) {
+			user.epochPoints += consumptionPoints;
+			totalEpochPoints += consumptionPoints;
+		}
 
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
+	}
+
+	function tattle(address _user) public {
+		User storage tattler = users[msg.sender];
+		User storage user = users[_user];
+
+		require(tattler.epochPoints > 0, "Msg.sender is not eligible to tattle");
+		require(user.epochPoints > 0, "User is not eligible to be tattled on");
+		require(block.timestamp > user.latestConsumptionTimestamp + 1 days, "User has consumed content in the current epoch");
+
+		tattler.epochPoints += user.epochPoints;
+		user.epochPoints = 0;
 	}
 
 	// TODO: store successfully proposed content items so that they cannot be proposed again
@@ -234,7 +270,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 	function _rewardValidProposal(address _proposer, bytes32 _contentItemHash) private {
 		users[_proposer].points += proposalReward;
-		totalPoints += proposalReward;
+		totalEpochPoints += proposalReward;
 
 		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, users[_proposer].points);
 	}
