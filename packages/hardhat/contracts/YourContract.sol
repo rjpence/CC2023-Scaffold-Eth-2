@@ -21,15 +21,27 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	using ECDSA for bytes32;
 	using FunctionsRequest for FunctionsRequest.Request;
 
+	struct User {
+		uint256 points;
+		uint256 rewards;
+		uint256 lastRewardsPerPoint;
+		uint256 latestConsumptionTimestamp;
+		uint256 epochEntryPoints;
+		uint256 epochPoints;
+	}
 
 	// State Variables
 	// address public override owner;
-	uint256 public totalPoints; // total points among all users
+	uint256 public totalEpochPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
 	uint256 public proposalReward; // configurable reward for proposing a valid content item
-	mapping (address => uint) public points; // points per user
+	uint256 public epochTimestamp; // timestamp of when the current epoch began
+	mapping (address => User) public users;
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
+
+	uint256 public distributableRewards;
+	uint256 public totalRewardsPerPoint;
 
 	// For Chainlink Functions
 	bytes32 public s_lastRequestId;
@@ -47,6 +59,11 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
 	event ProposalRewardChanged(uint256 _proposalReward);
 	event ChainlinkFunctionsSourceChanged(string _source);
+	event IndividualRewardsDistributed(address indexed _user, uint256 _points, uint256 _totalRewardsPerPoint);
+	event RewardsDistributed(uint256 _previousTotalRewardsPerPoint, uint256 _totalRewardsPerPoint, uint256 _previousDistributableRewards, uint256 _totalPoints);
+	event DistributableRewardsAdded(address indexed _by, uint256 _amount);
+	event RewardsWithdrawn(address indexed _user, uint256 _amount);
+	event EpochEnded();
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -58,6 +75,73 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
 		proposalReward = _proposalReward;
+		epochTimestamp = block.timestamp;
+	}
+
+	// TODO: add a function to show a user the rewards they can withdraw
+
+	function withdrawRewards() public {
+		// Distribute rewards to the user based on the points they have accumulated
+		// since the last time they were distributed and
+		// reset the lastRewardsPerPoint to the current totalRewardsPerPoint
+		// (as the new floor for the user's per point rewards)
+		_distributeIndividualRewards(msg.sender);
+
+		User storage user = users[msg.sender];
+
+		require(user.rewards > 0, "No rewards to withdraw");
+
+		// TODO: transfer from this contract to msg.sender
+		uint256 amount = user.rewards;
+		user.rewards = 0;
+
+		emit RewardsWithdrawn(msg.sender, amount);
+	}
+
+	function endEpoch() public {
+		// Distribute the remaining rewards to all users
+		_distributeRewards();
+
+		// Reset the epochTimestamp
+		epochTimestamp = block.timestamp;
+
+		emit EpochEnded();
+	}
+
+	// The contract distributes the rewards by points
+	function _distributeRewards() private {
+		// TODO: confirm that 18 decimals is the correct amount
+		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
+		require(totalEpochPoints > 0, "No points to distribute rewards");
+		
+		uint256 previousTotalRewardsPerPoint = totalRewardsPerPoint;
+		uint256 previousDistributableRewards = distributableRewards;
+		totalRewardsPerPoint += previousDistributableRewards / totalEpochPoints;
+		distributableRewards = 0;
+
+		emit RewardsDistributed(previousTotalRewardsPerPoint, totalRewardsPerPoint, previousDistributableRewards, totalEpochPoints);
+	}
+
+	// Distribute rewards to the user based on the points they have accumulated
+	// since the last time they were distributed and
+	// reset the lastRewardsPerPoint to the current totalRewardsPerPoint (as the new floor for the user's per point rewards)
+	function _distributeIndividualRewards(address _user) private {
+		User storage user = users[_user];
+		user.rewards += user.points * (totalRewardsPerPoint - user.lastRewardsPerPoint);
+		user.lastRewardsPerPoint = totalRewardsPerPoint;
+		
+		emit IndividualRewardsDistributed(_user, user.points, totalRewardsPerPoint);
+	}
+
+	// This function lets the contract know that there are _amount new rewards available
+	// This function should call the token contract to transfer _amount
+	// from the caller to the contract
+	function addDistributableRewards(uint256 _amount) public {
+		// TODO: transfer _amount from msg.sender to this contract
+
+		distributableRewards += _amount;
+
+		emit DistributableRewardsAdded(msg.sender, _amount);
 	}
 
 	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
@@ -72,9 +156,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ProposalRewardChanged(_proposalReward);
 	}
 
-	// TODO: limit how many times a user can call this function per day
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
 	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
+		// TODO: Make the number of points a constant or a configurable value
+		uint256 consumptionPoints = 10;
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
@@ -86,11 +171,49 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		
 		_contentItemHash;
 		_signedContentItemHash;
-		totalPoints +=1;
 		totalItemsConsumed +=1;
-		points[_user] += 1;
+
+		User storage user = users[_user];
+
+		// Distribute rewards to the user based on the points they have accumulated
+		if (user.lastRewardsPerPoint != totalRewardsPerPoint) _distributeIndividualRewards(_user);
+
+		// Total consumption is tracked, so that users can benefit in future epochs
+		// even if they do not maintain eligibility in the current epoch
+		user.points += consumptionPoints;
+
+		// A users's accumulated points are used for distributing rewards
+		// even from epochs where the user was not eligible, to reward long-term participation
+		// We separately points added in the epoch to facilitate rewarding tattlers (want a better name for this!)
+		if (block.timestamp <= epochTimestamp + 1 days) {
+			user.epochEntryPoints = user.points;
+			user.epochPoints = user.points;
+			totalEpochPoints += user.points;
+		}
+		// The user's points only count towards the current epoch if they have consumed content
+		// daily in the current epoch—if they do not already have any epoch points then
+		// they must not have consumed content in the current epoch
+		else if (
+			user.epochPoints > 0 &&
+			block.timestamp <= user.latestConsumptionTimestamp + 1 days
+		) {
+			user.epochPoints += consumptionPoints;
+			totalEpochPoints += consumptionPoints;
+		}
 
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
+	}
+
+	function tattle(address _user) public {
+		User storage tattler = users[msg.sender];
+		User storage user = users[_user];
+
+		require(tattler.epochPoints > 0, "Msg.sender is not eligible to tattle");
+		require(user.epochPoints > 0, "User is not eligible to be tattled on");
+		require(block.timestamp > user.latestConsumptionTimestamp + 1 days, "User has consumed content in the current epoch");
+
+		tattler.epochPoints += user.epochPoints;
+		user.epochPoints = 0;
 	}
 
 	// TODO: store successfully proposed content items so that they cannot be proposed again
@@ -146,10 +269,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	}
 
 	function _rewardValidProposal(address _proposer, bytes32 _contentItemHash) private {
-		points[_proposer] += proposalReward;
-		totalPoints += proposalReward;
+		users[_proposer].points += proposalReward;
+		totalEpochPoints += proposalReward;
 
-		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, points[_proposer]);
+		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, users[_proposer].points);
 	}
 
 	// Chainlink Functions functions
