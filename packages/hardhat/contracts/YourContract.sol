@@ -31,17 +31,26 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	}
 
 	// State Variables
-	// address public override owner;
+	// Consuming Content
 	uint256 public totalEpochPoints; // total points among all users
 	uint256 public totalItemsConsumed; // total items consumed
-	uint256 public proposalReward; // configurable reward for proposing a valid content item
 	uint256 public epochTimestamp; // timestamp of when the current epoch began
 	mapping (address => User) public users;
+
+	// Proposing Content
 	mapping (bytes32 => bytes32) public requestIdsToHashes;
 	mapping (bytes32 => address) public hashesToProposers;
 
+	// Rewarding Users
 	uint256 public distributableRewards;
+	uint256 public prevTotalRewardsPerEP; // used to randomly select a user from the previous epoch to reward the participation bonus;
 	uint256 public totalRewardsPerEP;
+	uint256 public proposalBonus = 100; // configurable reward for proposing a valid content item
+	uint256 public consumptionPoints = 10; // points earned for consuming content
+	uint256 public participationBonus = 200; // configurable bonus for randomly selected user from previous epoch
+	uint256 public participationBonusWinnerCounter; // counter to identify the participation bonus winner
+	uint256 public eligibleUsersCounter; // counter of the eligible users
+	bool public participationBonusAvailable; // flag to indicate if the participation bonus is available
 
 	// For Chainlink Functions
 	bytes32 public s_lastRequestId;
@@ -56,8 +65,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ContentItemProposed(address indexed _proposer, bytes32 indexed _contentItemHash, string[] _contentItemArgs);
 	event ValidationRequested(bytes32 indexed _requestId, bytes32 indexed _contentItemHash);
 	event ValidationResponseReceived(bytes32 indexed _requestId, bytes32 indexed _contentItemHash, bool _isContentItemValid);
-	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
-	event ProposalRewardChanged(uint256 _proposalReward);
+	event ProposalBonusChanged(uint256 _proposalBonus);
+	event ParticipationBonusChanged(uint256 _participationBonus);
 	event ChainlinkFunctionsSourceChanged(string _source);
 	event IndividualRewardsDistributed(address indexed _earner, address indexed _rewardee, uint256 _rewards, uint256 _epochPoints, uint256 _totalRewardsPerEP, uint256 _lastRewardsPerEP);
 	event RewardsDistributed(uint256 _previousTotalRewardsPerEP, uint256 _totalRewardsPerEP, uint256 _previousDistributableRewards, uint256 _totalPoints);
@@ -67,6 +76,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event EpochEntered(address indexed _user, uint256 _epochEntryPoints);
 	event EpochPointsEarned(address indexed _user, uint256 _epochPoints);
 	event UserTattledOn(address indexed _user, address indexed _tattler);
+	event RemovedUserFromEpoch(address indexed _user, uint256 _epochPoints);
+	event ParticipationBonusAwarded(address indexed _user);
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -74,15 +85,16 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
     constructor(
-		uint256 _proposalReward, 
         address router
     ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
-		proposalReward = _proposalReward;
 		epochTimestamp = block.timestamp;
 	}
 
 	// TODO: add a function to show a user the rewards they can withdraw
 
+	// Note: If the user received rewards in the previous epoch,
+	// 		 withdrawing rewards before entering the current epoch
+	// 		 will make the user ineligible to receive the participation bonus
 	function withdrawRewards() public {
 		// Distribute rewards to the user based on the points they have accumulated
 		// since the last time they were distributed and
@@ -99,6 +111,16 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		user.rewards = 0;
 
 		emit RewardsWithdrawn(msg.sender, amount);
+
+		if (hasMissedADay(user)) {
+			// Remove the user's epoch points from the total epoch points
+			uint256 removedEpochPoints = user.epochPoints;
+			totalEpochPoints -= removedEpochPoints;
+			eligibleUsersCounter -= 1;
+			user.epochPoints = 0;
+
+			emit RemovedUserFromEpoch(msg.sender, removedEpochPoints);
+		}
 	}
 
 	// Note: ending the epoch actually extends users ability to be eligible
@@ -106,11 +128,20 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	function endEpoch() public {
 		// Distribute the remaining rewards to all users
 		_distributeRewards();
+		_setParticipationBonusWinnerCounter();
 
 		// Reset the epochTimestamp
 		epochTimestamp = block.timestamp;
 
 		emit EpochEnded();
+	}
+
+	// Uses Chainlink VRF to randomly select a user from the previous epoch
+	function _setParticipationBonusWinnerCounter() private {
+		// TODO: Call Chainlink VRF to get the random number
+		uint256 randomNumber = 10;
+		participationBonusWinnerCounter = randomNumber % eligibleUsersCounter + 1;
+		eligibleUsersCounter = 0;
 	}
 
 	// The contract distributes the rewards by points
@@ -121,8 +152,10 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		
 		uint256 previousTotalRewardsPerEP = totalRewardsPerEP;
 		uint256 previousDistributableRewards = distributableRewards;
+		previousTotalRewardsPerEP = totalRewardsPerEP;
 		totalRewardsPerEP += previousDistributableRewards / totalEpochPoints;
 		distributableRewards = 0;
+		totalEpochPoints = 0;
 
 		emit RewardsDistributed(previousTotalRewardsPerEP, totalRewardsPerEP, previousDistributableRewards, totalEpochPoints);
 	}
@@ -160,16 +193,20 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ChainlinkFunctionsSourceChanged(_source);
 	}
 
-	function setProposalReward(uint256 _proposalReward) public onlyOwner {
-		proposalReward = _proposalReward;
+	function setProposalBonus(uint256 _proposalBonus) public onlyOwner {
+		proposalBonus = _proposalBonus;
 
-		emit ProposalRewardChanged(_proposalReward);
+		emit ProposalBonusChanged(_proposalBonus);
+	}
+
+	function setParticipationBonus(uint256 _participationBonus) public onlyOwner {
+		participationBonus = _participationBonus;
+
+		emit ParticipationBonusChanged(_participationBonus);
 	}
 
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
 	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
-		// TODO: Make the number of points a constant or a configurable value
-		uint256 consumptionPoints = 10;
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
@@ -179,13 +216,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         // Ensure the signer is _user
         require(signer == _user, "Invalid signature");
 		
-
+		bool eligibleForParticipationBonus = false;
 		User storage user = users[_user];
 
-		// Total consumption is tracked, so that users can benefit in future epochs
-		// even if they do not maintain eligibility in the current epoch
-		user.points += consumptionPoints;
-		totalItemsConsumed +=1;
 
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 
@@ -193,6 +226,15 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		// then either the epoch has changed since the last time the user consumed content or
 		// the user is new
 		if (user.lastRewardsPerEP != totalRewardsPerEP) {
+			// If the user's lastRewardsPerEP is the same as the previous totalRewardsPerEP
+			// and the user is eligible for rewards (has epoch points and hasn't missed a day),
+			// that means the user was eligible in the previous epoch.
+			// In that case, the user is eligible for the participation bonus.
+			eligibleForParticipationBonus = (
+				user.lastRewardsPerEP == prevTotalRewardsPerEP &&
+				isEligible(user)
+			);
+
 			// Distribute rewards to the user based on the points they accumulated in the previous epochs
 			// - A user who was eligible in a previous epoch could make the choice not to re-enter until multiple epochs later
 			// and still receive rewards for the previous epochs, even the ones they didn't participat in
@@ -209,26 +251,45 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 		// If the block timestamp is within 1 day of the epoch timestamp,
 		// the user enters the new epoch and earns points for consuming content
-		if (block.timestamp <= epochTimestamp + 1 days) {
+		if (block.timestamp < epochTimestamp + 1 days) {
 			// We separately track points added in the epoch to facilitate rewarding tattlers
 			user.epochEntryPoints = user.points;
-			user.epochPoints = user.points;
 			totalEpochPoints += user.points;
-			
+			eligibleUsersCounter += 1;
+
 			emit EpochEntered(_user, user.epochEntryPoints);
-			emit EpochPointsEarned(_user, consumptionPoints);
+
+			_trackEarnedEpochPoints(user, _user, user.epochEntryPoints);
+			_trackEarnedEpochPoints(user, _user, consumptionPoints);
+
+			// Consider the user for the participation bonus
+			if (
+				eligibleForParticipationBonus &&
+				participationBonusAvailable
+			) {
+				if (participationBonusWinnerCounter == 0) {
+					_trackEarnedEpochPoints(user, _user, participationBonus);
+					participationBonusAvailable = false;
+
+					emit ParticipationBonusAwarded(_user);
+				} else {
+					participationBonusWinnerCounter -= 1;
+				}
+			}
 		}
 		// If the epoch has not just started, then the user can only earn epoch points
 		// if they have consumed content every day in the current epoch
 		else if (
 			user.epochPoints > 0 &&
-			block.timestamp <= user.latestConsumptionTimestamp + 1 days
+			block.timestamp < user.latestConsumptionTimestamp + 1 days
 		) {
-			user.epochPoints += consumptionPoints;
-			totalEpochPoints += consumptionPoints;
-
-			emit EpochPointsEarned(_user, consumptionPoints);
+			_trackEarnedEpochPoints(user, _user, consumptionPoints);
 		}
+
+		// Total consumption is tracked, so that users can benefit in future epochs
+		// even if they do not maintain eligibility in the current epoch
+		user.points += consumptionPoints;
+		totalItemsConsumed +=1;
 	}
 
 	function tattle(address _user) public {
@@ -248,7 +309,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 			_settleIndividualRewards(_user, msg.sender);
 
 			// Remove the user's epoch points from the total epoch points
-			totalEpochPoints -= (user.epochEntryPoints + user.epochPoints);
+			totalEpochPoints -= user.epochPoints;
+
+			emit RemovedUserFromEpoch(msg.sender, user.epochPoints);
 		}
 		// If the rewards per point have not changed
 		// then the user's points are from the current epoch and
@@ -261,6 +324,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 			// Remove the user's epoch entry points from the total epoch points
 			totalEpochPoints -= user.epochEntryPoints;
+			eligibleUsersCounter -= 1;
+
+			emit RemovedUserFromEpoch(msg.sender, user.epochEntryPoints);
 		}
 
 		user.epochPoints = 0;
@@ -329,8 +395,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	// TODO: Add modifier that only allows FunctionsConsumer contract to call this function
 	function _handleValidationResponse(bytes32 _requestId, bool _isContentItemValid) private {
 		bytes32 contentItemHash = requestIdsToHashes[_requestId];
-		address proposer = hashesToProposers[contentItemHash];
-		require(proposer != address(0), "Invalid requestId");
+		address proposerAddress = hashesToProposers[contentItemHash];
+		require(proposerAddress != address(0), "Invalid requestId");
 
 		delete hashesToProposers[contentItemHash];
 		delete requestIdsToHashes[_requestId];
@@ -338,15 +404,16 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit ValidationResponseReceived(_requestId, contentItemHash, _isContentItemValid);
 
 		if (_isContentItemValid) {
-			_rewardValidProposal(proposer, contentItemHash);
+			User storage proposer = users[proposerAddress];
+			_trackEarnedEpochPoints(proposer, proposerAddress, proposalBonus);
 		}
 	}
 
-	function _rewardValidProposal(address _proposer, bytes32 _contentItemHash) private {
-		users[_proposer].points += proposalReward;
-		totalEpochPoints += proposalReward;
+	function _trackEarnedEpochPoints(User storage _user, address _userAddress, uint256 _epochPoints) private {
+		_user.epochPoints += _epochPoints;
+		totalEpochPoints += _epochPoints;
 
-		emit ValidProposalRewarded(_proposer, _contentItemHash, proposalReward, users[_proposer].points);
+		emit EpochPointsEarned(_userAddress, _epochPoints);
 	}
 
 	// Chainlink Functions functions
