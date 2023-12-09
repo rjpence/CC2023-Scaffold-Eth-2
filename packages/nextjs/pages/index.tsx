@@ -8,6 +8,7 @@ import { createPublicClient, http, keccak256, stringToBytes } from "viem";
 import { avalanche, avalancheFuji, hardhat } from "viem/chains";
 // Importing a specific blockchain environment from Viem
 import { useAccount, useSignMessage } from "wagmi";
+import { ContentItem } from "~~/components/ContentItem";
 // Wagmi hooks for wallet account management and message signing
 import { MetaHeader } from "~~/components/MetaHeader";
 import { InputBase, getParsedError } from "~~/components/scaffold-eth";
@@ -76,6 +77,7 @@ const Home: NextPage = () => {
   const [contentItemUrl, setContentItemUrl] = useState<string>("");
   // ... (similar useState declarations for other pieces of data like title, question, etc.)
   const [contentItemTitle, setContentItemTitle] = useState<string>("");
+  const [contentItemDescription, setContentItemDescription] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
   const [answers, setAnswers] = useState<string[]>([]);
   const [contentItemHash, setContentItemHash] = useState<string>("");
@@ -139,7 +141,12 @@ const Home: NextPage = () => {
   const chainlinkFunctionsGasLimit = 300000;
 
   useEffect(() => {
-    if (distributableRewards && Number(distributableRewards) >= 1 * 10 ** 18 && totalPoints && Number(totalPoints) > 0) {
+    if (
+      distributableRewards &&
+      Number(distributableRewards) >= 1 * 10 ** 18 &&
+      totalPoints &&
+      Number(totalPoints) > 0
+    ) {
       console.log("distributableRewards:", distributableRewards);
       setIsDistributable(true);
     } else {
@@ -316,6 +323,7 @@ const Home: NextPage = () => {
         .then(data => {
           setContentItemUrl(data.url);
           setContentItemTitle(data.title);
+          setContentItemDescription(data.description || "Read this to improve your financial literacy!");
           setQuestion(data.question);
           setAnswers(data.answers);
         });
@@ -502,13 +510,18 @@ const Home: NextPage = () => {
         <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        {contentItemUrl && contentItemTitle && (
+        {contentItemUrl && contentItemTitle && contentItemDescription && (
           <div>
-            Read this to earn rewards:{" "}
-            <a href={contentItemUrl} target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
-              {contentItemTitle}
-            </a>
-            {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
+            <div>
+              <div className="p-4 text-3xl">Read this to earn rewards</div>
+              <ContentItem
+                title={contentItemTitle}
+                description={contentItemDescription}
+                url={contentItemUrl}
+                onClick={handleLinkClick}
+              />
+              {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
+            </div>
           </div>
         )}
       </div>
@@ -546,7 +559,9 @@ const Home: NextPage = () => {
             <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
               End Epoch 👩‍⚖️
             </button>
-            <div><p>This will distribute the distributable rewards.</p></div>
+            <div>
+              <p>This will distribute the distributable rewards.</p>
+            </div>
           </form>
         </div>
       </div>
