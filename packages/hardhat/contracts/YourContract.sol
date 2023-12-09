@@ -124,6 +124,8 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 
 		emit RewardsWithdrawn(msg.sender, amount);
 
+		// If the user has missed a day, they must not have entered the current epoch
+		// and we want to remove their epoch points from the total epoch points
 		if (hasMissedADay(user)) {
 			// Remove the user's epoch points from the total epoch points
 			uint256 removedEpochPoints = user.epochPoints;
@@ -236,7 +238,6 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 		bool eligibleForParticipationBonus = false;
 		User storage user = users[_user];
 
-
 		emit ContentItemConsumed(_user, _contentItemHash, signer);
 
 		// If the rewards per point have changed
@@ -276,8 +277,8 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 
 			emit EpochEntered(_user, user.epochEntryPoints);
 
-			_trackEarnedEpochPoints(user, _user, user.epochEntryPoints);
-			_trackEarnedEpochPoints(user, _user, consumptionPoints);
+			_giveEpochPoints(user, _user, user.epochEntryPoints);
+			_giveEpochPoints(user, _user, consumptionPoints);
 
 			// Consider the user for the participation bonus
 			if (
@@ -285,7 +286,7 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 				participationBonusAvailable
 			) {
 				if (participationBonusWinnerCounter == 0) {
-					_trackEarnedEpochPoints(user, _user, participationBonus);
+					_giveEpochPoints(user, _user, participationBonus);
 					participationBonusAvailable = false;
 
 					emit ParticipationBonusAwarded(_user);
@@ -300,7 +301,7 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 			user.epochPoints > 0 &&
 			block.timestamp < user.latestConsumptionTimestamp + 1 days
 		) {
-			_trackEarnedEpochPoints(user, _user, consumptionPoints);
+			_giveEpochPoints(user, _user, consumptionPoints);
 		}
 
 		// Total consumption is tracked, so that users can benefit in future epochs
@@ -389,7 +390,10 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
         bytes32 _donId
 	) public {
 		require(hashesToProposers[_contentItemHash] == address(0), "Content item already proposed");
+		require(isEligible(users[msg.sender]), "Only eligible users can propose content");
+
 		hashesToProposers[_contentItemHash] = msg.sender;
+
 		emit ContentItemProposed(msg.sender, _contentItemHash, _contentItemArgs);
 
 		// Send _url and _title to Chainlink Functions to validate the propriety of the content item
@@ -420,13 +424,26 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 
 		emit ValidationResponseReceived(_requestId, contentItemHash, _isContentItemValid);
 
+		User storage proposer = users[proposerAddress];
+
+		// If the content item is valid, the proposer earns the proposal bonus
 		if (_isContentItemValid) {
-			User storage proposer = users[proposerAddress];
-			_trackEarnedEpochPoints(proposer, proposerAddress, proposalBonus);
+			_giveEpochPoints(proposer, proposerAddress, proposalBonus);
+		}
+		// If the content item is invalid, the proposer loses eligibility for rewards in the current epoch
+		// because we are paying for the functions request and the OpenAI API call
+		// and want to limit frivolous proposals
+		else if (hasEpochPoints(proposer)) {
+			uint256 removedEpochPoints = proposer.epochPoints;
+			totalEpochPoints -= removedEpochPoints;
+			eligibleUsersCounter -= 1;
+			proposer.epochPoints = 0;
+
+			emit RemovedUserFromEpoch(msg.sender, removedEpochPoints);
 		}
 	}
 
-	function _trackEarnedEpochPoints(User storage _user, address _userAddress, uint256 _epochPoints) private {
+	function _giveEpochPoints(User storage _user, address _userAddress, uint256 _epochPoints) private {
 		_user.epochPoints += _epochPoints;
 		totalEpochPoints += _epochPoints;
 
