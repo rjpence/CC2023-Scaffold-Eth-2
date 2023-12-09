@@ -11,12 +11,13 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/FunctionsClient.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/dev/v1_0_0/libraries/FunctionsRequest.sol";
-
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
+import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 /**
  * A smart contract that allows changing a state variable of the contract and tracking the changes
   * @author Jason Banks, Randy Pence
  */
-contract YourContract is FunctionsClient, ConfirmedOwner {
+contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	// This extends the functionality of bytes32 with the ECDSA functions
 	using ECDSA for bytes32;
 	using FunctionsRequest for FunctionsRequest.Request;
@@ -52,11 +53,17 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	uint256 public eligibleUsersCounter; // counter of the eligible users
 	bool public participationBonusAvailable; // flag to indicate if the participation bonus is available
 
-	// For Chainlink Functions
+	// For Chainlink
 	bytes32 public s_lastRequestId;
     bytes public s_lastResponse;
     bytes public s_lastError;
-	string public chainlinkFunctionsSource;
+	string public functionsSource;
+	uint64 public vrf_subscriptionId = 855; // avalanche Fuji testnet
+	VRFCoordinatorV2Interface public vrfCoordinator;
+	bytes32 public vrf_keyHash = 0x354d2f95da55398f44b7cff77da56283d9c6c829a4bdf1bbcaf2ad6a4d081f61; // avalanche Fuji testnet;
+	uint32 public callbackGasLimit = 40000;
+	uint16 public requestConfirmations = 3;
+	uint32 public constant numWords =  1;
 
 	// For Chainlink Functions
     error UnexpectedRequestID(bytes32 requestId);
@@ -67,7 +74,6 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ValidationResponseReceived(bytes32 indexed _requestId, bytes32 indexed _contentItemHash, bool _isContentItemValid);
 	event ProposalBonusChanged(uint256 _proposalBonus);
 	event ParticipationBonusChanged(uint256 _participationBonus);
-	event ChainlinkFunctionsSourceChanged(string _source);
 	event IndividualRewardsDistributed(address indexed _earner, address indexed _rewardee, uint256 _rewards, uint256 _epochPoints, uint256 _totalRewardsPerEP, uint256 _lastRewardsPerEP);
 	event RewardsDistributed(uint256 _previousTotalRewardsPerEP, uint256 _totalRewardsPerEP, uint256 _previousDistributableRewards, uint256 _totalPoints);
 	event DistributableRewardsAdded(address indexed _by, uint256 _amount);
@@ -78,15 +84,21 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event UserTattledOn(address indexed _user, address indexed _tattler);
 	event RemovedUserFromEpoch(address indexed _user, uint256 _epochPoints);
 	event ParticipationBonusAwarded(address indexed _user);
+	event ParticipationBonusWinnerCounterSet(uint256 _participationBonusWinnerCounter);
 
 	// For Chainlink Functions
-    event Response(bytes32 indexed requestId, bytes response, bytes err);
+	event VRFRequestSent(uint256 indexed requestId);
+	event VRFResponseReceived(uint256 indexed requestId, uint256 randomNumber);
+	event FunctionsSourceChanged(string _source);
+    event FunctionsResponseReceived(bytes32 indexed requestId, bytes response, bytes err);
 
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
     constructor(
-        address router
-    ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
+		address _vrfCoordinator,
+        address _functionsRouter
+    ) FunctionsClient(_functionsRouter) VRFConsumerBaseV2(_vrfCoordinator) ConfirmedOwner(msg.sender) {
+		vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
 		epochTimestamp = block.timestamp;
 	}
 
@@ -123,12 +135,15 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		}
 	}
 
+	// Uses Chainlink VRF to randomly select a user from the previous epoch
 	// Note: ending the epoch actually extends users ability to be eligible
 	// 		 for rewards by up to a day
 	function endEpoch() public {
 		// Distribute the remaining rewards to all users
 		_distributeRewards();
-		_setParticipationBonusWinnerCounter();
+
+		// Call Chainlink VRF to get a random number to select a user for the participation bonus
+		_requestRandomNumber();
 
 		// Reset the epochTimestamp
 		epochTimestamp = block.timestamp;
@@ -136,12 +151,13 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit EpochEnded();
 	}
 
-	// Uses Chainlink VRF to randomly select a user from the previous epoch
-	function _setParticipationBonusWinnerCounter() private {
-		// TODO: Call Chainlink VRF to get the random number
-		uint256 randomNumber = 10;
-		participationBonusWinnerCounter = randomNumber % eligibleUsersCounter + 1;
+	// Called by the Chainlink VRF fulfillRandomWords function
+	function _setParticipationBonusWinnerCounter(uint256 _randomNumber) private {
+		// Transform the random number to a number between 1 and the number of eligible users, inclusively
+		participationBonusWinnerCounter = (_randomNumber % eligibleUsersCounter) + 1;
 		eligibleUsersCounter = 0;
+
+		emit ParticipationBonusWinnerCounterSet(participationBonusWinnerCounter);
 	}
 
 	// The contract distributes the rewards by points
@@ -187,10 +203,11 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit DistributableRewardsAdded(msg.sender, _amount);
 	}
 
+	// TODO: Get a new OpenAI key and encrypt it for proper deployment
 	function setChainlinkFunctionsSource(string memory _source) public onlyOwner {
-		chainlinkFunctionsSource = _source;
+		functionsSource = _source;
 
-		emit ChainlinkFunctionsSourceChanged(_source);
+		emit FunctionsSourceChanged(_source);
 	}
 
 	function setProposalBonus(uint256 _proposalBonus) public onlyOwner {
@@ -377,7 +394,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 
 		// Send _url and _title to Chainlink Functions to validate the propriety of the content item
 		bytes32 requestId = sendValidationRequest(
-			chainlinkFunctionsSource,
+			functionsSource,
 			_encryptedSecretsUrls,
 			_donHostedSecretsSlotID,
 			_donHostedSecretsVersion,
@@ -416,6 +433,27 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit EpochPointsEarned(_userAddress, _epochPoints);
 	}
 
+	// Chainlink VRF functions
+	function _requestRandomNumber() private {
+		uint256 requestId = vrfCoordinator.requestRandomWords(
+            vrf_keyHash,
+            vrf_subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            1
+        );
+		
+		emit VRFRequestSent(requestId);
+	}
+
+
+    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
+		uint256 randomNumber = _randomWords[0];
+        emit VRFResponseReceived(_requestId, randomNumber);
+
+		_setParticipationBonusWinnerCounter(randomNumber);
+    }	
+
 	// Chainlink Functions functions
     /**
      * @notice Send a simple request
@@ -427,7 +465,6 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
      * @param bytesArgs Array of bytes arguments, represented as hex strings
      * @param subscriptionId Billing ID
      */
-	// TODO: determine if the gas saved by using sendCBOR is worth the opacity
     function sendValidationRequest(
         string memory source,
         bytes memory encryptedSecretsUrls,
@@ -477,7 +514,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
         }
         s_lastResponse = response;
         s_lastError = err;
-        emit Response(requestId, s_lastResponse, s_lastError);
+
+        emit FunctionsResponseReceived(requestId, s_lastResponse, s_lastError);
+
         _handleValidationResponse(requestId, abi.decode(response, (bool)));
     }	
 }

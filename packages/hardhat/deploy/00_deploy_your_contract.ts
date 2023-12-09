@@ -24,6 +24,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   // Chainlink Avalanche Fuji details
   // https://docs.chain.link/chainlink-functions/supported-networks#avalanche-fuji-testnet
   const functionsRouterAvalancheFuji = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
+  const vrfCoordinatorAvalancheFuji = "0x2eD832Ba664535e5886b75D64C46EB9a228C2610";
   // const linkTokenAvalancheFuji = "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846";
   // const donIDString = "fun-avalanche-fuji-1";
 
@@ -31,7 +32,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
     from: deployer,
     // Contract constructor arguments
     // "deployer" is just to have a valid address—to be updated with the actual address of the Chainlink Functions Router
-    args: [10, functionsRouterAvalancheFuji],
+    args: [vrfCoordinatorAvalancheFuji, functionsRouterAvalancheFuji],
     log: true,
     // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by
     // automatically mining the contract deployment transaction. There is no effect on live networks.
@@ -41,6 +42,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   // Get the deployed contract
   const yourContract = await hre.ethers.getContract("YourContract", deployer);
 
+  // TODO: Get a new OpenAI key and encrypt it for proper deployment
   const chainlinkFunctionsRequestSource =
     'const url = "https://api.openai.com/v1/chat/completions";\n' +
     'const openAIApiKey = "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";\n' +
@@ -97,7 +99,6 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   const response = await yourContract.setChainlinkFunctionsSource(chainlinkFunctionsRequestSource);
   const receipt = await response.wait();
   console.log(`Transaction receipt: ${JSON.stringify(receipt, null, 2)}`);
-
 };
 
 export default deployYourContract;
