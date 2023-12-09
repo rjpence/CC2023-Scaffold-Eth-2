@@ -24,7 +24,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	struct User {
 		uint256 points;
 		uint256 rewards;
-		uint256 lastRewardsPerPoint;
+		uint256 lastRewardsPerEP;
 		uint256 latestConsumptionTimestamp;
 		uint256 epochEntryPoints;
 		uint256 epochPoints;
@@ -41,7 +41,7 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	mapping (bytes32 => address) public hashesToProposers;
 
 	uint256 public distributableRewards;
-	uint256 public totalRewardsPerPoint;
+	uint256 public totalRewardsPerEP;
 
 	// For Chainlink Functions
 	bytes32 public s_lastRequestId;
@@ -59,11 +59,14 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	event ValidProposalRewarded(address indexed _proposer, bytes32 indexed _contentItemHash, uint256 _proposalReward, uint256 _totalProposerPoints);
 	event ProposalRewardChanged(uint256 _proposalReward);
 	event ChainlinkFunctionsSourceChanged(string _source);
-	event IndividualRewardsDistributed(address indexed _user, uint256 _points, uint256 _totalRewardsPerPoint);
-	event RewardsDistributed(uint256 _previousTotalRewardsPerPoint, uint256 _totalRewardsPerPoint, uint256 _previousDistributableRewards, uint256 _totalPoints);
+	event IndividualRewardsDistributed(address indexed _earner, address indexed _rewardee, uint256 _rewards, uint256 _epochPoints, uint256 _totalRewardsPerEP, uint256 _lastRewardsPerEP);
+	event RewardsDistributed(uint256 _previousTotalRewardsPerEP, uint256 _totalRewardsPerEP, uint256 _previousDistributableRewards, uint256 _totalPoints);
 	event DistributableRewardsAdded(address indexed _by, uint256 _amount);
 	event RewardsWithdrawn(address indexed _user, uint256 _amount);
 	event EpochEnded();
+	event EpochEntered(address indexed _user, uint256 _epochEntryPoints);
+	event EpochPointsEarned(address indexed _user, uint256 _epochPoints);
+	event UserTattledOn(address indexed _user, address indexed _tattler);
 
 	// For Chainlink Functions
     event Response(bytes32 indexed requestId, bytes response, bytes err);
@@ -83,9 +86,9 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	function withdrawRewards() public {
 		// Distribute rewards to the user based on the points they have accumulated
 		// since the last time they were distributed and
-		// reset the lastRewardsPerPoint to the current totalRewardsPerPoint
+		// reset the lastRewardsPerEP to the current totalRewardsPerEP
 		// (as the new floor for the user's per point rewards)
-		_distributeIndividualRewards(msg.sender);
+		_settleIndividualRewards(msg.sender, msg.sender);
 
 		User storage user = users[msg.sender];
 
@@ -98,6 +101,8 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 		emit RewardsWithdrawn(msg.sender, amount);
 	}
 
+	// Note: ending the epoch actually extends users ability to be eligible
+	// 		 for rewards by up to a day
 	function endEpoch() public {
 		// Distribute the remaining rewards to all users
 		_distributeRewards();
@@ -112,25 +117,30 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
 	function _distributeRewards() private {
 		// TODO: confirm that 18 decimals is the correct amount
 		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
-		require(totalEpochPoints > 0, "No points to distribute rewards");
+		require(totalEpochPoints > 0, "No epoch points to distribute rewards");
 		
-		uint256 previousTotalRewardsPerPoint = totalRewardsPerPoint;
+		uint256 previousTotalRewardsPerEP = totalRewardsPerEP;
 		uint256 previousDistributableRewards = distributableRewards;
-		totalRewardsPerPoint += previousDistributableRewards / totalEpochPoints;
+		totalRewardsPerEP += previousDistributableRewards / totalEpochPoints;
 		distributableRewards = 0;
 
-		emit RewardsDistributed(previousTotalRewardsPerPoint, totalRewardsPerPoint, previousDistributableRewards, totalEpochPoints);
+		emit RewardsDistributed(previousTotalRewardsPerEP, totalRewardsPerEP, previousDistributableRewards, totalEpochPoints);
 	}
 
-	// Distribute rewards to the user based on the points they have accumulated
-	// since the last time they were distributed and
-	// reset the lastRewardsPerPoint to the current totalRewardsPerPoint (as the new floor for the user's per point rewards)
-	function _distributeIndividualRewards(address _user) private {
-		User storage user = users[_user];
-		user.rewards += user.points * (totalRewardsPerPoint - user.lastRewardsPerPoint);
-		user.lastRewardsPerPoint = totalRewardsPerPoint;
+	// Distribute rewards to the rewardee based on the epoch points the earner earned
+	// since the last time they rewards were settled by the earner and
+	// reset the lastRewardsPerEP to the current totalRewardsPerEP for the earner
+	// (as the new floor for calculating the user's per point rewards)
+	function _settleIndividualRewards(address _earner, address _rewardee) private {
+		User storage earner = users[_earner];
+		User storage rewardee = users[_rewardee];
+
+		uint256 lastRewardsPerEP = earner.lastRewardsPerEP;
+		uint256 rewards = earner.epochPoints * (totalRewardsPerEP - lastRewardsPerEP);
+		rewardee.rewards += rewards;
+		earner.lastRewardsPerEP = totalRewardsPerEP;
 		
-		emit IndividualRewardsDistributed(_user, user.points, totalRewardsPerPoint);
+		emit IndividualRewardsDistributed(_earner, _rewardee, rewards, earner.epochPoints, totalRewardsPerEP, lastRewardsPerEP);
 	}
 
 	// This function lets the contract know that there are _amount new rewards available
@@ -163,57 +173,121 @@ contract YourContract is FunctionsClient, ConfirmedOwner {
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
-		// Key centrally-added content items to the owner so that they cannot be proposed
+		// Key centrally-added content items to the owner so that they cannot be proposed again
 		if (hashesToProposers[_contentItemHash] == address(0)) hashesToProposers[_contentItemHash] = msg.sender;
 
         // Ensure the signer is _user
         require(signer == _user, "Invalid signature");
 		
-		_contentItemHash;
-		_signedContentItemHash;
-		totalItemsConsumed +=1;
 
 		User storage user = users[_user];
-
-		// Distribute rewards to the user based on the points they have accumulated
-		if (user.lastRewardsPerPoint != totalRewardsPerPoint) _distributeIndividualRewards(_user);
 
 		// Total consumption is tracked, so that users can benefit in future epochs
 		// even if they do not maintain eligibility in the current epoch
 		user.points += consumptionPoints;
+		totalItemsConsumed +=1;
 
-		// A users's accumulated points are used for distributing rewards
-		// even from epochs where the user was not eligible, to reward long-term participation
-		// We separately points added in the epoch to facilitate rewarding tattlers (want a better name for this!)
+		emit ContentItemConsumed(_user, _contentItemHash, signer);
+
+		// If the rewards per point have changed
+		// then either the epoch has changed since the last time the user consumed content or
+		// the user is new
+		if (user.lastRewardsPerEP != totalRewardsPerEP) {
+			// Distribute rewards to the user based on the points they accumulated in the previous epochs
+			// - A user who was eligible in a previous epoch could make the choice not to re-enter until multiple epochs later
+			// and still receive rewards for the previous epochs, even the ones they didn't participat in
+			// because their epoch points will remain part of the total epoch points by which rewards are distributed.
+			// - Tattling is the mechanism that is meant to balance this, because a user's accumulated rewards will be
+			// rewarded to whoever tattles on the user.
+			// - A new user will not have any points from previous epochs, so they will not receive any rewards,
+			// but their lastRewardsPerEP will be set to the current totalRewardsPerEP so they can earn from the current epoch
+			_settleIndividualRewards(_user, _user);
+
+			// Set the user's points for the new epoch
+			user.epochPoints = 0;
+		}
+
+		// If the block timestamp is within 1 day of the epoch timestamp,
+		// the user enters the new epoch and earns points for consuming content
 		if (block.timestamp <= epochTimestamp + 1 days) {
+			// We separately track points added in the epoch to facilitate rewarding tattlers
 			user.epochEntryPoints = user.points;
 			user.epochPoints = user.points;
 			totalEpochPoints += user.points;
+			
+			emit EpochEntered(_user, user.epochEntryPoints);
+			emit EpochPointsEarned(_user, consumptionPoints);
 		}
-		// The user's points only count towards the current epoch if they have consumed content
-		// daily in the current epoch—if they do not already have any epoch points then
-		// they must not have consumed content in the current epoch
+		// If the epoch has not just started, then the user can only earn epoch points
+		// if they have consumed content every day in the current epoch
 		else if (
 			user.epochPoints > 0 &&
 			block.timestamp <= user.latestConsumptionTimestamp + 1 days
 		) {
 			user.epochPoints += consumptionPoints;
 			totalEpochPoints += consumptionPoints;
-		}
 
-		emit ContentItemConsumed(_user, _contentItemHash, signer);
+			emit EpochPointsEarned(_user, consumptionPoints);
+		}
 	}
 
 	function tattle(address _user) public {
 		User storage tattler = users[msg.sender];
 		User storage user = users[_user];
 
-		require(tattler.epochPoints > 0, "Msg.sender is not eligible to tattle");
-		require(user.epochPoints > 0, "User is not eligible to be tattled on");
-		require(block.timestamp > user.latestConsumptionTimestamp + 1 days, "User has consumed content in the current epoch");
+		// TODO: confirm that tattler is still eligible for rewards in addition to having epoch points--[mark ineligible if not]
+		require(isEligible(tattler), "Only eligible users can tattle");
+		require(hasEpochPoints(user), "User has no epoch points");
+		require(hasMissedADay(user), "User hasn't missed a day");
 
-		tattler.epochPoints += user.epochPoints;
+		// If the rewards per point have changed
+		// then the user's points are from previous epochs and
+		// the tattler gets the user's rewards
+		if (user.lastRewardsPerEP != totalRewardsPerEP) {
+			// Fix to settle them to the tattler and not the user
+			_settleIndividualRewards(_user, msg.sender);
+
+			// Remove the user's epoch points from the total epoch points
+			totalEpochPoints -= (user.epochEntryPoints + user.epochPoints);
+		}
+		// If the rewards per point have not changed
+		// then the user's points are from the current epoch and
+		// the tattler gets the user's newly accumulated epoch points
+		else {
+			uint256 tattlePoints = user.epochPoints - user.epochEntryPoints;
+			tattler.epochPoints += tattlePoints;
+
+			emit EpochPointsEarned(msg.sender, tattlePoints);
+
+			// Remove the user's epoch entry points from the total epoch points
+			totalEpochPoints -= user.epochEntryPoints;
+		}
+
 		user.epochPoints = 0;
+
+		emit UserTattledOn(_user, msg.sender);
+	}
+
+	// A user is only eligible if they have consumed content daily in the current epoch, which means:
+	// - they have epoch points and
+	// - they have consumed content daily in the current epoch
+	function isEligible(User memory _user) public view returns (bool) {
+
+		if (hasEpochPoints(_user) && !hasMissedADay(_user)) return true;
+
+		return false;
+	}
+
+	function hasEpochPoints(User memory user) private pure returns (bool) {
+		return user.epochPoints > 0;
+	}
+
+	// A user has missed a day if:
+	// - the current epoch more than 1 day old and
+	// - more than 1 day has passed since the user's latest consumption
+	function hasMissedADay(User memory user) private view returns (bool) {
+		return block.timestamp >= epochTimestamp + 1 days ||
+			block.timestamp >= user.latestConsumptionTimestamp + 1 days;
 	}
 
 	// TODO: store successfully proposed content items so that they cannot be proposed again
