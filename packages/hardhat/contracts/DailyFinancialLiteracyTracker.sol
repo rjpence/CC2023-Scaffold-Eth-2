@@ -181,7 +181,7 @@ contract DailyFinancialLiteracyTracker is VRFConsumerBaseV2, FunctionsClient, Co
 
 	// The contract distributes the rewards by points
 	function _distributeRewards() private {
-		// TODO: confirm that 18 decimals is the correct amount
+		// TODO: confirm that 18 decimals is the correct number for the payment token
 		require(distributableRewards >= 1*10**18, "Rewards must be at least 1 token");
 		require(totalEpochPoints > 0, "No epoch points to distribute rewards");
 		
