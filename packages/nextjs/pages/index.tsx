@@ -25,6 +25,7 @@ type User = {
   points: number;
   rewards: number;
   lastRewardsPerPoint: number;
+  epochPoints: number;
 };
 
 // Creating a functional component for the homepage
@@ -56,9 +57,9 @@ const Home: NextPage = () => {
   const contractName = "DailyFinancialLiteracyTracker"; // Name of the smart contract to interact with
   // Hooks to read data from the deployed contract using its name
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
-  const { data: totalPoints } = useScaffoldContractRead({
+  const { data: totalEpochPoints } = useScaffoldContractRead({
     contractName: contractName,
-    functionName: "totalPoints",
+    functionName: "totalEpochPoints",
   });
   const { data: totalItemsConsumed } = useScaffoldContractRead({
     contractName: contractName,
@@ -102,18 +103,7 @@ const Home: NextPage = () => {
   const { writeAsync: proposeContentItem } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "extProposeContentItem",
-    args: [
-      undefined,
-      // undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-    ],
+    args: [undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined],
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
       setProposeTransactionHash(txnReceipt.transactionHash);
@@ -144,8 +134,8 @@ const Home: NextPage = () => {
     if (
       distributableRewards &&
       Number(distributableRewards) >= 1 * 10 ** 18 &&
-      totalPoints &&
-      Number(totalPoints) > 0
+      totalEpochPoints &&
+      Number(totalEpochPoints) > 0
     ) {
       console.log("distributableRewards:", distributableRewards);
       setIsDistributable(true);
@@ -169,6 +159,7 @@ const Home: NextPage = () => {
           points: Number(data[0]),
           rewards: Number(data[1]),
           lastRewardsPerPoint: Number(data[2]),
+          epochPoints: Number(data[5]),
         });
       });
     }
@@ -178,13 +169,11 @@ const Home: NextPage = () => {
   useEffect(() => {
     // Make sure the address is available before making the API call
     if (address && contentItemUrl.length === 0 && contentItemTitle.length === 0) getContentItem(); // Fetch content item if the address is available
-    const events = getEvents();
-    console.log("EVENTS FROM THE LIVE TESTNET:\n", events);
   }, [address]); // This effect runs whenever 'address' changes
 
   // ... (other useEffect hooks for different actions like signing messages, sending transactions, etc.)
   useEffect(() => {
-    if (contentItemHash.length > 0) {
+    if (user && contentItemHash.length > 0) {
       console.log("contentItemHash has been updated:", contentItemHash);
 
       signMessage();
@@ -192,7 +181,7 @@ const Home: NextPage = () => {
   }, [contentItemHash]);
 
   useEffect(() => {
-    if (signedContentItemHash && signedContentItemHash.length > 0) {
+    if (user && signedContentItemHash && signedContentItemHash.length > 0) {
       try {
         const contentConsumptionProverData = {
           contractAddress: deployedContractData?.address,
@@ -221,7 +210,7 @@ const Home: NextPage = () => {
   }, [signedContentItemHash, address, deployedContractData]);
 
   useEffect(() => {
-    if (transactionSignature.length > 0) {
+    if (user && transactionSignature.length > 0) {
       console.log("transactionSignature has been updated:", transactionSignature);
       const sendTrackConsumedContentTransaction = async () => {
         console.log("Sending signed trackConsumedContent transaction...");
@@ -239,7 +228,7 @@ const Home: NextPage = () => {
   }, [transactionSignature]);
 
   useEffect(() => {
-    if (consumeTransactionHash.length > 0) {
+    if (user && consumeTransactionHash.length > 0) {
       console.log("transactionHash has been updated:", consumeTransactionHash);
       getContentItem();
       setLinkClicked(false);
@@ -247,7 +236,7 @@ const Home: NextPage = () => {
   }, [consumeTransactionHash]);
 
   useEffect(() => {
-    if (fetchedTitle.length > 0) {
+    if (user && fetchedTitle.length > 0) {
       console.log("fetchedTitle has been updated:", fetchedTitle);
 
       const proposedContentItemHash = getContentItemHash(userInputUrl, fetchedTitle);
@@ -438,7 +427,7 @@ const Home: NextPage = () => {
   });
   useScaffoldEventSubscriber({
     contractName: contractName,
-    eventName: "Response",
+    eventName: "FunctionsResponseReceived",
     listener: logs => {
       logs.map(log => {
         const { requestId, response, err } = log.args;
@@ -454,42 +443,6 @@ const Home: NextPage = () => {
         const { _requestId, _contentItemHash, _isContentItemValid } = log.args;
         console.log("📡 ValidationResponseReceived event", _requestId, _contentItemHash, _isContentItemValid);
         notification.error("Proposal rejected.", { icon: "❌" });
-      });
-    },
-  });
-  // TODO: try replacing with Wagmi or Viem directly, as this does not appear to consistently update
-  useScaffoldEventSubscriber({
-    contractName: contractName,
-    eventName: "ValidProposalRewarded",
-    listener: logs => {
-      logs.map(log => {
-        const { _proposer, _contentItemHash, _proposalReward, _totalProposerPoints } = log.args;
-        console.log(
-          "📡 ValidProposalRewarded event",
-          _proposer,
-          _contentItemHash,
-          _proposalReward,
-          _totalProposerPoints,
-        );
-        notification.success(`Proposal accepted! You earned ${_proposalReward} points!`, { icon: "🎉" });
-      });
-    },
-  });
-
-  useScaffoldEventSubscriber({
-    contractName: contractName,
-    eventName: "RewardsDistributed",
-    listener: logs => {
-      logs.map(log => {
-        const { _previousTotalRewardsPerPoint, _totalRewardsPerPoint, _previousDistributableRewards, _totalPoints } =
-          log.args;
-        console.log(
-          "📡 RewardsDistributed event",
-          _previousTotalRewardsPerPoint,
-          _totalRewardsPerPoint,
-          _previousDistributableRewards,
-          _totalPoints,
-        );
       });
     },
   });
@@ -509,102 +462,114 @@ const Home: NextPage = () => {
         <div className="p-4 text-4xl">{new Date(Number(epochTimestamp) * 1000).toDateString()}</div>
         <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
-      <div className="flex flex-col w-full lg:flex-row">
-        <div className="grid flex-grow h-32 card bg-base-300 rounded-box place-items-center">
-          <div className="" /*"flex items-center flex-col flex-grow pt=10 my-10"*/>
-            {contentItemUrl && contentItemTitle && contentItemDescription && (
-              <div>
-                <div className="p-4 text-3xl">Read this to earn rewards</div>
-                <ContentItem
-                  title={contentItemTitle}
-                  description={contentItemDescription}
-                  url={contentItemUrl}
-                  onClick={handleLinkClick}
-                />
-                {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            {linkClicked && question && answers.length > 0 && (
-              <form onSubmit={handleSubmit} className="flex flex-col items-center">
-                <h2>{question}</h2>
-                {answers.map((answer, index) => (
-                  <label key={index}>
-                    <input
-                      type="radio"
-                      name="answer"
-                      value={answer}
-                      onChange={e => setSelectedAnswer(e.target.value)}
-                      className="radio radio-accent"
-                    />
-                    {answer}
-                  </label>
-                ))}
-                <button type="submit" className="btn btn-outline btn-primary">
-                  Submit Answer
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-        <div className="divider lg:divider-horizontal"></div>
-        <div className="grid flex-grow h-32 card bg-base-300 rounded-box place-items-center">
-          <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            <h2>🤓 Total Items Consumed 📚</h2>
-            <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
-          </div>
-          <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            <h2>💰 Total Rewards to Distribute 💸</h2>
-            <div className="p-4 text-4xl">{distributableRewards?.toString()}</div>
-            <div className="flex items-center flex-col flex-grow pt=10 my-10">
-              <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
-                <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
-                  End Epoch 👩‍⚖️
-                </button>
-                <div>
-                  <p>This will distribute the distributable rewards.</p>
+      {user && (
+        <div>
+          <div className="flex flex-col w-full lg:flex-row">
+            <div className="grid flex-grow bg-base-300 rounded-box">
+              <div className="stats shadow">
+                <div className="stat place-items-center">
+                  <div className="stat-title">Total Epoch Points</div>
+                  <div className="stat-value">{totalEpochPoints?.toString()}</div>
+                  <div className="stat-desc">Total points earned in the current epoch</div>
                 </div>
-              </form>
+                <div className="stat place-items-center">
+                  <div className="stat-title">Your Epoch Points</div>
+                  <div className="stat-value">{user?.epochPoints.toString()}</div>
+                  <div className="stat-desc">Total points earned in the current epoch</div>
+                </div>
+              </div>
+              <div className="stats shadow">
+                <div className="stat place-items-center">
+                  <div className="stat-title">🤓 Total Items Consumed 📚</div>
+                  <div className="stat-value">{totalItemsConsumed?.toString()}</div>
+                  <div className="stat-desc">Total items consumed by all users</div>
+                </div>
+                <div className="stat place-items-center">
+                  <div className="stat-title">💰 Total Rewards to Distribute 💸</div>
+                  <div className="stat-value">{distributableRewards?.toString()}</div>
+                  <div className="stat-desc">Total rewards to distribute in the current epoch</div>
+                </div>
+              </div>
+            </div>
+            <div className="divider lg:divider-horizontal"></div>
+            <div className="grid flex-grow bg-base-300 rounded-box">
+              <div className="flex items-center flex-col flex-grow pt=10 my-10">
+                {contentItemUrl && contentItemTitle && contentItemDescription && (
+                  <div>
+                    <div className="p-4 text-3xl">Read this to earn rewards</div>
+                    <ContentItem
+                      title={contentItemTitle}
+                      description={contentItemDescription}
+                      url={contentItemUrl}
+                      onClick={handleLinkClick}
+                    />
+                    {consumeTransactionHash.length > 0 && <p>Success!</p>}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center flex-col flex-grow pt=10 my-10">
+                {linkClicked && question && answers.length > 0 && (
+                  <div className="card w-96 bg-primary text-primary-content">
+                    <div className="card-body">
+                      <h2 className="card-title">{question} 🤔</h2>
+                      <form onSubmit={handleSubmit} className="flex flex-col items-center">
+                        {answers.map((answer, index) => (
+                          <label key={index}>
+                            <input
+                              type="radio"
+                              name="answer"
+                              value={answer}
+                              onChange={e => setSelectedAnswer(e.target.value)}
+                              className="radio radio-secondary"
+                            />
+                            {answer}
+                          </label>
+                        ))}
+                        <div className="card-actions justify-end">
+                          <button type="submit" className="btn">
+                            Submit Answer
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+          <></>
+          {/* Form for proposing a new content item */}
           <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            <h2>Total Points</h2>
-            <div className="p-4 text-4xl">{Number(totalPoints) * pointsUIMultiplier}</div>
-          </div>
-          <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            <h2>Your Data</h2>
-            {user && (
-              <div>
-                <Address address={address} />
-                <div className="p-4 text-4xl">Points: {user.points * pointsUIMultiplier}</div>
-                <div className="p-4 text-4xl">Rewards: {user.rewards}</div>
+            <div className="card w-96 bg-primary text-primary-content">
+              <div className="card-body">
+                <h2 className="card-title">Propose</h2>
+                <p>Propose financial literacy and well-being content to earn rewards!</p>
+                <form onSubmit={handleUrlSubmit} className="flex flex-col items-center">
+                  <InputBase
+                    name="url"
+                    placeholder="URL"
+                    value={userInputUrl}
+                    onChange={setUserInputUrl}
+                    error={fetchTitleErrorMessage.length > 0}
+                  />
+                  <div className="card-actions justify-end">
+                    <button type="submit" className="btn my-4">
+                      Propose Content
+                    </button>
+                  </div>
+                </form>
               </div>
-            )}
+            </div>
+            {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
+            {proposeTransactionHash.length > 0 && <p>Successfully proposed!</p>}
           </div>
         </div>
-      </div>
-      <></>
-      {/* Form for proposing a new content item */}
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Propose</h2>
-        <p>Propose financial literacy and well-being content to earn rewards!</p>
-        <form onSubmit={handleUrlSubmit} className="flex flex-col items-center">
-          <InputBase
-            name="url"
-            placeholder="URL"
-            value={userInputUrl}
-            onChange={setUserInputUrl}
-            error={fetchTitleErrorMessage.length > 0}
-          />
-          <button type="submit" className="btn btn-primary my-4">
-            Propose Content
-          </button>
-        </form>
-        {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
-        {proposeTransactionHash.length > 0 && <p>Successfully proposed! Transaction Hash: {proposeTransactionHash}</p>}
-        {fetchTitleErrorMessage && <p>{fetchTitleErrorMessage}</p>}
-      </div>
+      )}
+      {!user && (
+        <div className="flex items-center flex-col flex-grow pt=10 my-10">
+          <h2>Connect your wallet to get started</h2>
+        </div>
+      )}
     </div>
   );
 };
