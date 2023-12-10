@@ -502,82 +502,87 @@ const Home: NextPage = () => {
       <MetaHeader />
       {/* JSX code to render various parts of the page like links, forms, counters, etc. */}
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h1>Financial Literacy Dapp</h1>
+        <h1>Daily Financial Literacy Dapp</h1>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h2>⏳ Epoch Started</h2>
         <div className="p-4 text-4xl">{new Date(Number(epochTimestamp) * 1000).toDateString()}</div>
         <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        {contentItemUrl && contentItemTitle && contentItemDescription && (
-          <div>
-            <div>
-              <div className="p-4 text-3xl">Read this to earn rewards</div>
-              <ContentItem
-                title={contentItemTitle}
-                description={contentItemDescription}
-                url={contentItemUrl}
-                onClick={handleLinkClick}
-              />
-              {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        {linkClicked && question && answers.length > 0 && (
-          <form onSubmit={handleSubmit} className="flex flex-col items-center">
-            <h2>{question}</h2>
-            {answers.map((answer, index) => (
-              <label key={index}>
-                <input
-                  type="radio"
-                  name="answer"
-                  value={answer}
-                  onChange={e => setSelectedAnswer(e.target.value)}
-                  className="radio radio-accent"
+      <div className="flex flex-col w-full lg:flex-row">
+        <div className="grid flex-grow h-32 card bg-base-300 rounded-box place-items-center">
+          <div className="" /*"flex items-center flex-col flex-grow pt=10 my-10"*/>
+            {contentItemUrl && contentItemTitle && contentItemDescription && (
+              <div>
+                <div className="p-4 text-3xl">Read this to earn rewards</div>
+                <ContentItem
+                  title={contentItemTitle}
+                  description={contentItemDescription}
+                  url={contentItemUrl}
+                  onClick={handleLinkClick}
                 />
-                {answer}
-              </label>
-            ))}
-            <button type="submit" className="btn btn-outline btn-primary">
-              Submit Answer
-            </button>
-          </form>
-        )}
-      </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>🤓 Total Items Consumed 📚</h2>
-        <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
-      </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>💰 Total Rewards to Distribute 💸</h2>
-        <div className="p-4 text-4xl">{distributableRewards?.toString()}</div>
-        <div className="flex items-center flex-col flex-grow pt=10 my-10">
-          <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
-            <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
-              End Epoch 👩‍⚖️
-            </button>
-            <div>
-              <p>This will distribute the distributable rewards.</p>
-            </div>
-          </form>
-        </div>
-      </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Total Points</h2>
-        <div className="p-4 text-4xl">{Number(totalPoints) * pointsUIMultiplier}</div>
-      </div>
-      <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Your Data</h2>
-        {user && (
-          <div>
-            <Address address={address} />
-            <div className="p-4 text-4xl">Points: {user.points * pointsUIMultiplier}</div>
-            <div className="p-4 text-4xl">Rewards: {user.rewards}</div>
+                {consumeTransactionHash.length > 0 && <div>Success! Transaction Hash: {consumeTransactionHash}</div>}
+              </div>
+            )}
           </div>
-        )}
+          <div className="flex items-center flex-col flex-grow pt=10 my-10">
+            {linkClicked && question && answers.length > 0 && (
+              <form onSubmit={handleSubmit} className="flex flex-col items-center">
+                <h2>{question}</h2>
+                {answers.map((answer, index) => (
+                  <label key={index}>
+                    <input
+                      type="radio"
+                      name="answer"
+                      value={answer}
+                      onChange={e => setSelectedAnswer(e.target.value)}
+                      className="radio radio-accent"
+                    />
+                    {answer}
+                  </label>
+                ))}
+                <button type="submit" className="btn btn-outline btn-primary">
+                  Submit Answer
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+        <div className="divider lg:divider-horizontal"></div>
+        <div className="grid flex-grow h-32 card bg-base-300 rounded-box place-items-center">
+          <div className="flex items-center flex-col flex-grow pt=10 my-10">
+            <h2>🤓 Total Items Consumed 📚</h2>
+            <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
+          </div>
+          <div className="flex items-center flex-col flex-grow pt=10 my-10">
+            <h2>💰 Total Rewards to Distribute 💸</h2>
+            <div className="p-4 text-4xl">{distributableRewards?.toString()}</div>
+            <div className="flex items-center flex-col flex-grow pt=10 my-10">
+              <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
+                <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
+                  End Epoch 👩‍⚖️
+                </button>
+                <div>
+                  <p>This will distribute the distributable rewards.</p>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div className="flex items-center flex-col flex-grow pt=10 my-10">
+            <h2>Total Points</h2>
+            <div className="p-4 text-4xl">{Number(totalPoints) * pointsUIMultiplier}</div>
+          </div>
+          <div className="flex items-center flex-col flex-grow pt=10 my-10">
+            <h2>Your Data</h2>
+            {user && (
+              <div>
+                <Address address={address} />
+                <div className="p-4 text-4xl">Points: {user.points * pointsUIMultiplier}</div>
+                <div className="p-4 text-4xl">Rewards: {user.rewards}</div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       <></>
       {/* Form for proposing a new content item */}
