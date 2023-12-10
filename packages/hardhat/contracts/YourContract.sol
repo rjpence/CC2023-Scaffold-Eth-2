@@ -103,7 +103,22 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 		epochTimestamp = block.timestamp;
 	}
 
-	// TODO: add a function to show a user the rewards they can withdraw
+	// Possible epoch rewards is the amount of rewards the user would receive
+	// if the epoch ended now
+	function getPossibleEpochRewards(address _user) public view returns (uint256) {
+		User memory user = users[_user];
+		user;
+
+		return user.epochPoints * (distributableRewards / totalEpochPoints);
+	}
+
+	// Unsettled rewards is the amount of rewards the user has earned
+	// but has not pulled out of the general pool of rewards
+	function getUnsettledRewards(address _user) public view returns (uint256) {
+		User memory user = users[_user];
+
+		return user.epochPoints * (totalRewardsPerEP - user.lastRewardsPerEP);
+	}
 
 	// Note: If the user received rewards in the previous epoch,
 	// 		 withdrawing rewards before entering the current epoch
