@@ -1,144 +1,52 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { YourContract } from "../typechain-types";
+import { DailyFinancialLiteracyTracker } from "../typechain-types";
+import { BigNumber, Signer } from "ethers";
 
-describe("YourContract", function () {
+describe("DailyFinancialLiteracyTracker", function () {
   // We define a fixture to reuse the same setup in every test.
 
-  let yourContract: YourContract;
+  // struct User {
+	// 	uint256 points;
+	// 	uint256 rewards;
+	// 	uint256 lastRewardsPerEP;
+	// 	uint256 latestConsumptionTimestamp;
+	// 	uint256 epochEntryPoints;
+	// 	uint256 epochPoints;
+	// }
 
-  before(async () => {
-    const [owner] = await ethers.getSigners();
-    const yourContractFactory = await ethers.getContractFactory("YourContract");
-    yourContract = (await yourContractFactory.deploy(owner.address)) as YourContract;
-
-    await yourContract.deployed();
-  });
-
-  describe("Deployment", function () {
-    it("Should set the right owner", async function () {
-      const [owner] = await ethers.getSigners();
-      expect(await yourContract.owner()).to.equal(owner.address);
-    });
-  });
-
-  describe("User Action", function () {
-    describe("When caller is not owner", function () {
-      it("Should revert", async function () {
-        // Get the first two accounts from the wallet and assign the second to `user`
-        const [owner, user] = await ethers.getSigners();
-        const contentItemHash = ethers.utils.id("contentItem");
-        const signedContentItemHash = await user.signMessage(ethers.utils.arrayify(contentItemHash));
-
-        await expect(
-          yourContract.connect(user).userAction(owner.address, contentItemHash, signedContentItemHash),
-        ).to.be.revertedWith("Not owner");
-      });
-    });
-
-    describe("When caller is owner", function () {
-      describe("When signedContentItemHash signer is not user", function () {
-        it("Should revert", async function () {
-          const [owner, user, otherUser] = await ethers.getSigners();
+  let dfltContract: DailyFinancialLiteracyTracker;
+  let owner: Signer;
+  let nonOwner: Signer;
+  let userPointsBefore: BigNumber;
+  let userEpochPointsBefore: BigNumber;
+  let totalItemsConsumedBefore: BigNumber;
           const contentItemHash = ethers.utils.id("contentItem");
           const signedContentItemHash = await user.signMessage(ethers.utils.arrayify(contentItemHash));
-          console.log("signedContentItemHash", signedContentItemHash);
 
-          // Reverts because signedContentItemHash is signed by user, but otherUser is given as user to userAction
-          await expect(
-            yourContract
-              .connect(owner)
-              .userAction(otherUser.address, contentItemHash, signedContentItemHash as `0x${string}`),
-          ).to.be.revertedWith("Invalid signature");
-        });
-      });
+  before(async () => {
+    // Deploy the contract and get the signers
+    [owner, nonOwner] = await ethers.getSigners();
+    const DailyFinancialLiteracyTracker = await ethers.getContractFactory("DailyFinancialLiteracyTracker");
+    dfltContract = (await DailyFinancialLiteracyTracker.deploy(owner)) as DailyFinancialLiteracyTracker;
 
-      it("Should record a user action", async function () {
-        const [owner, user, otherUser] = await ethers.getSigners();
-        const contentItemHash = ethers.utils.id("contentItem");
-
-        // Send user's signed content item hash to the contract
-        const signedContentItemHashFromUser = await user.signMessage(ethers.utils.arrayify(contentItemHash));
-        await yourContract.connect(owner).userAction(user.address, contentItemHash, signedContentItemHashFromUser);
-        expect(await yourContract.points(user.address)).to.equal(1);
-
-        // Send otherUser's signed content item hash to the contract
-        const signedContentItemHashFromOtherUser = await otherUser.signMessage(ethers.utils.arrayify(contentItemHash));
-        await yourContract
-          .connect(owner)
-          .userAction(otherUser.address, contentItemHash, signedContentItemHashFromOtherUser);
-        expect(await yourContract.points(otherUser.address)).to.equal(1);
-
-        expect(await yourContract.totalPoints()).to.equal(2);
-      });
-
-      it("Should emit ContentItemConsumed event", async function () {
-        expect(false).to.equal(true);
-      });
-    });
+    await dfltContract.deployed();
   });
 
-  describe("extProposeContentItem", function () {
-    it("Should revert when content item already proposed", async function () {
-      expect(false).to.equal(true);
+  describe("trackConsumedContent function", function () {
+    beforeEach(async function () {
+      // Record the initial state before each test
+      userPointsBefore = (await dfltContract.users(nonOwner.getAddress())).points;
+      userEpochPointsBefore = (await dfltContract.users(nonOwner.getAddress())).epochPoints;
+      totalItemsConsumedBefore = await dfltContract.totalItemsConsumed();
     });
 
-    it("Should emit ContentItemProposed event", async function () {
-      expect(false).to.equal(true);
-    });
-
-    it("Should store content item hash and proposer", async function () {
-      // You will need the `requestId` to get the content item hash from the `hashesToProposers` mapping
-      // That value will be emitted in the `ValidationRequested` event
-      expect(false).to.equal(true);
-    });
-
-    it("Should emit ValidationRequested event", async function () {
-      expect(false).to.equal(true);
-    });
-  });
-
-  describe("handleValidationResponse", function () {
-    it("Should revert for invalid requestId", async function () {
-      expect(false).to.equal(true);
-    });
-
-    it("Should delete the content item hash and proposer", async function () {
-      expect(false).to.equal(true);
-    });
-
-    it("Should emit ValidationResponseReceived event", async function () {
-      expect(false).to.equal(true);
-    });
-
-    describe("When propose is valid", function () {
-      it("Should increase proposer's points by proposalReward", async function () {
-        expect(false).to.equal(true);
+    describe("When msg.sender is Not Owner", function () {
+      it("should revert the transaction", async function () {
+        // Assuming 'trackConsumedContent' requires parameters like user, content item hash, etc.
+        const tx = dfltContract.connect(nonOwner).trackConsumedContent(/* parameters */);
+        await expect(tx).to.be.revertedWith("Not owner");
       });
-
-      it("Should increase totalPoints by proposalReward", async function () {
-        expect(false).to.equal(true);
-      });
-
-      it("Should emit ValidProposalRewarded event", async function () {
-        expect(false).to.equal(true);
-      });
-    });
-  });
-
-  describe("setProposalReward", function () {
-    describe("When caller is not owner", function () {
-      it("Should revert", async function () {
-        expect(false).to.equal(true);
-      });
-    });
-
-    it("Should set the new proposalReward", async function () {
-      expect(false).to.equal(true);
-    });
-
-    it("Should emit ProposalRewardChanged event", async function () {
-      expect(false).to.equal(true);
     });
   });
 });
