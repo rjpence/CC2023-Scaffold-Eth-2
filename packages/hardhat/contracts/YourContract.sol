@@ -51,7 +51,7 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	uint256 public participationBonus = 200; // configurable bonus for randomly selected user from previous epoch
 	uint256 public participationBonusWinnerCounter; // counter to identify the participation bonus winner
 	uint256 public eligibleUsersCounter; // counter of the eligible users
-	bool public participationBonusAvailable; // flag to indicate if the participation bonus is available
+	bool public participationBonusActivated; // flag to indicate if the participation bonus is available
 
 	// For Chainlink
 	bytes32 public s_lastRequestId;
@@ -84,7 +84,8 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	event UserTattledOn(address indexed _user, address indexed _tattler);
 	event RemovedUserFromEpoch(address indexed _user, uint256 _epochPoints);
 	event ParticipationBonusAwarded(address indexed _user);
-	event ParticipationBonusWinnerCounterSet(uint256 _participationBonusWinnerCounter);
+	event ParticipationBonusActivated(bool _participationBonusActivated, uint256 _participationBonusWinnerCounter);
+	event ParticipationBonusDeactivated(bool _participationBonusActivated, uint256 _participationBonusWinnerCounter);
 
 	// For Chainlink Functions
 	event VRFRequestSent(uint256 indexed requestId);
@@ -154,12 +155,13 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	}
 
 	// Called by the Chainlink VRF fulfillRandomWords function
-	function _setParticipationBonusWinnerCounter(uint256 _randomNumber) private {
+	function _activateParticipationBonus(uint256 _randomNumber) private {
 		// Transform the random number to a number between 1 and the number of eligible users, inclusively
 		participationBonusWinnerCounter = (_randomNumber % eligibleUsersCounter) + 1;
+		participationBonusActivated = true;
 		eligibleUsersCounter = 0;
 
-		emit ParticipationBonusWinnerCounterSet(participationBonusWinnerCounter);
+		emit ParticipationBonusActivated(participationBonusActivated, participationBonusWinnerCounter);
 	}
 
 	// The contract distributes the rewards by points
@@ -283,13 +285,14 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 			// Consider the user for the participation bonus
 			if (
 				eligibleForParticipationBonus &&
-				participationBonusAvailable
+				participationBonusActivated
 			) {
 				if (participationBonusWinnerCounter == 0) {
 					_giveEpochPoints(user, _user, participationBonus);
-					participationBonusAvailable = false;
+					participationBonusActivated = false;
 
 					emit ParticipationBonusAwarded(_user);
+					emit ParticipationBonusDeactivated(participationBonusActivated, participationBonusWinnerCounter);
 				} else {
 					participationBonusWinnerCounter -= 1;
 				}
@@ -468,7 +471,7 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 		uint256 randomNumber = _randomWords[0];
         emit VRFResponseReceived(_requestId, randomNumber);
 
-		_setParticipationBonusWinnerCounter(randomNumber);
+		_activateParticipationBonus(randomNumber);
     }	
 
 	// Chainlink Functions functions
