@@ -1,0 +1,58 @@
+export const contentItemImageData = [
+  {
+    src: "/backgrounds/gradient-1.jpg",
+    alt: "blue and pink light illustration",
+    credit: `Photo by <a href="https://unsplash.com/@codioful?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Codioful (Formerly Gradienta)</a> on <a href="https://unsplash.com/photos/blue-and-pink-light-illustration-LeG68PrXA6Y?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 426,
+  },
+  {
+    src: "/backgrounds/gradient-2.jpg",
+    alt: "sun in the sky during daytime",
+    credit: `Photo by <a href="https://unsplash.com/@mymind?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">mymind</a> on <a href="https://unsplash.com/photos/sun-in-the-sky-during-daytime-XUlsF9LYeVk?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 959,
+  },
+  {
+    src: "/backgrounds/gradient-3.jpg",
+    alt: "purple and pink light illustration",
+    credit: `Photo by <a href="https://unsplash.com/@ashleywhitlatch?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Ashley Whitlatch</a> on <a href="https://unsplash.com/photos/a-group-of-people-standing-on-top-of-a-sandy-beach-36aGnv29Ss0?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 853,
+  },
+  {
+    src: "/backgrounds/gradient-4.jpg",
+    alt: "Light blue to dark blue gradient",
+    credit: `Photo by <a href="https://unsplash.com/@lukechesser?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Luke Chesser</a> on <a href="https://unsplash.com/photos/light-blue-to-dark-blue-gradient-pJadQetzTkI?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 448,
+  },
+  {
+    src: "/backgrounds/gradient-5.jpg",
+    alt: "a blue and pink background with a circular object in the middle",
+    credit: `Photo by <a href="https://unsplash.com/@and_machines?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">and machines</a> on <a href="https://unsplash.com/photos/a-blue-and-pink-background-with-a-circular-object-in-the-middle-vqTWfa4DjEk?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 905,
+  },
+  {
+    src: "/backgrounds/gradient-6.jpg",
+    alt: "Dark purple to red to orange gradient",
+    credit: `Photo by <a href="https://unsplash.com/@lukechesser?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Luke Chesser</a> on <a href="https://unsplash.com/photos/dark-purple-to-red-to-orange-gradient-CxBx_J3yp9g?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 448,
+  },
+  {
+    src: "/backgrounds/gradient-7.jpg",
+    alt: "purple and pink gradient",
+    credit: `Photo by <a href="https://unsplash.com/@codioful?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Codioful (Formerly Gradienta)</a> on <a href="https://unsplash.com/photos/WhMeZiImKnk?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 426,
+  },
+  {
+    src: "/backgrounds/gradient-8.jpg",
+    alt: "green and blue striped textile",
+    credit: `Photo by <a href="https://unsplash.com/@codioful?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Codioful (Formerly Gradienta)</a> on <a href="https://unsplash.com/photos/green-and-blue-striped-textile-qYoJBFNl4rI?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>`,
+    width: 640,
+    height: 960,
+  },
+];

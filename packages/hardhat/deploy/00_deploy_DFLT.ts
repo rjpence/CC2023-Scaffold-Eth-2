@@ -39,6 +39,8 @@ const deployDFLTContract: DeployFunction = async function (hre: HardhatRuntimeEn
     autoMine: true,
   });
 
+  // TODO: add as consumer to Chainlink Functions and VRF subscriptions
+  // TODO: consider moving setting source to a separate script file
   // Get the deployed contract
   const dfltContract = await hre.ethers.getContract("DailyFinancialLiteracyTracker", deployer);
 
