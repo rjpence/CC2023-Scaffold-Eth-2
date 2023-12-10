@@ -20,6 +20,7 @@ import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubs
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
 import { notification } from "~~/utils/scaffold-eth";
 
+
 type User = {
   points: number;
   rewards: number;
@@ -48,21 +49,11 @@ const Home: NextPage = () => {
     chain: hardhat /*getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string)*/,
     transport: http(),
   });
-  const yourContract = deployedContracts["43113"].YourContract;
-  const getEvents = async () => {
-    const events = await _publicClient.getContractEvents({
-      abi: yourContract.abi,
-      address: yourContract.address,
-      fromBlock: 28324189n,
-      toBlock: 28326189n,
-    });
-    return events;
-  };
 
   const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
-  const contractName = "YourContract"; // Name of the smart contract to interact with
+  const contractName = "DailyFinancialLiteracyTracker"; // Name of the smart contract to interact with
   // Hooks to read data from the deployed contract using its name
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
   const { data: totalPoints } = useScaffoldContractRead({
@@ -161,7 +152,7 @@ const Home: NextPage = () => {
   useEffect(() => {
     const getUserData = async (address: string) => {
       return await publicClient.readContract({
-        ...deployedContracts["31337"].YourContract,
+        ...deployedContracts["31337"].DailyFinancialLiteracyTracker,
         functionName: "users",
         args: [address],
       });
@@ -226,18 +217,18 @@ const Home: NextPage = () => {
   useEffect(() => {
     if (transactionSignature.length > 0) {
       console.log("transactionSignature has been updated:", transactionSignature);
-      const sendUserActionTransaction = async () => {
-        console.log("Sending signed userAction transaction...");
+      const sendTrackConsumedContentTransaction = async () => {
+        console.log("Sending signed trackConsumedContent transaction...");
 
-        const userActionTransactionHash = await publicClient.sendRawTransaction({
+        const trackConsumedContentTransactionHash = await publicClient.sendRawTransaction({
           serializedTransaction: transactionSignature as `0x${string}`,
         });
 
-        console.log("userActionTransactionHash:", userActionTransactionHash);
+        console.log("trackConsumedContentTransactionHash:", trackConsumedContentTransactionHash);
 
-        setConsumeTransactionHash(userActionTransactionHash);
+        setConsumeTransactionHash(trackConsumedContentTransactionHash);
       };
-      sendUserActionTransaction();
+      sendTrackConsumedContentTransaction();
     }
   }, [transactionSignature]);
 
@@ -498,7 +489,7 @@ const Home: NextPage = () => {
 
   // The return statement of the component, which renders the UI
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
-  //       when the user submits the correct answer, the userAction function should be called
+  //       when the user submits the correct answer, the trackConsumedContent function should be called
   return (
     <div>
       <MetaHeader />

@@ -6,8 +6,8 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
 const deployedContracts = {
   31337: {
-    YourContract: {
-      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    DailyFinancialLiteracyTracker: {
+      address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
       abi: [
         {
           inputs: [
@@ -313,6 +313,25 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
+              indexed: false,
+              internalType: "bool",
+              name: "_participationBonusActivated",
+              type: "bool",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "_participationBonusWinnerCounter",
+              type: "uint256",
+            },
+          ],
+          name: "ParticipationBonusActivated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
               indexed: true,
               internalType: "address",
               name: "_user",
@@ -340,12 +359,18 @@ const deployedContracts = {
           inputs: [
             {
               indexed: false,
+              internalType: "bool",
+              name: "_participationBonusActivated",
+              type: "bool",
+            },
+            {
+              indexed: false,
               internalType: "uint256",
               name: "_participationBonusWinnerCounter",
               type: "uint256",
             },
           ],
-          name: "ParticipationBonusWinnerCounterSet",
+          name: "ParticipationBonusDeactivated",
           type: "event",
         },
         {
@@ -712,6 +737,44 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+          ],
+          name: "getPossibleEpochRewards",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_user",
+              type: "address",
+            },
+          ],
+          name: "getUnsettledRewards",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
               internalType: "bytes32",
               name: "requestId",
               type: "bytes32",
@@ -786,7 +849,7 @@ const deployedContracts = {
                   type: "uint256",
                 },
               ],
-              internalType: "struct YourContract.User",
+              internalType: "struct DailyFinancialLiteracyTracker.User",
               name: "_user",
               type: "tuple",
             },
@@ -843,7 +906,7 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "participationBonusAvailable",
+          name: "participationBonusActivated",
           outputs: [
             {
               internalType: "bool",
@@ -1077,19 +1140,6 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "to",
-              type: "address",
-            },
-          ],
-          name: "transferOwnership",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
               name: "_user",
               type: "address",
             },
@@ -1104,7 +1154,20 @@ const deployedContracts = {
               type: "bytes",
             },
           ],
-          name: "userAction",
+          name: "trackConsumedContent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+          ],
+          name: "transferOwnership",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

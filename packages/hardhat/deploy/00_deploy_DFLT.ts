@@ -2,12 +2,12 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 /**
- * Deploys a contract named "YourContract" using the deployer account and
+ * Deploys a contract named "DailyFinancialLiteracyTracker" using the deployer account and
  * constructor arguments set to the deployer address
  *
  * @param hre HardhatRuntimeEnvironment object.
  */
-const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const deployDFLTContract: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   /*
     On localhost, the deployer account is the one that comes with Hardhat, which is already funded.
 
@@ -28,7 +28,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   // const linkTokenAvalancheFuji = "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846";
   // const donIDString = "fun-avalanche-fuji-1";
 
-  await deploy("YourContract", {
+  await deploy("DailyFinancialLiteracyTracker", {
     from: deployer,
     // Contract constructor arguments
     // "deployer" is just to have a valid address—to be updated with the actual address of the Chainlink Functions Router
@@ -40,7 +40,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   });
 
   // Get the deployed contract
-  const yourContract = await hre.ethers.getContract("YourContract", deployer);
+  const dfltContract = await hre.ethers.getContract("DailyFinancialLiteracyTracker", deployer);
 
   // TODO: Get a new OpenAI key and encrypt it for proper deployment
   const chainlinkFunctionsRequestSource =
@@ -96,13 +96,13 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
     "return Functions.encodeUint256(isValid);";
 
   console.log("Setting chainlinkFunctionsRequestSource on the contract...");
-  const response = await yourContract.setChainlinkFunctionsSource(chainlinkFunctionsRequestSource);
+  const response = await dfltContract.setChainlinkFunctionsSource(chainlinkFunctionsRequestSource);
   const receipt = await response.wait();
   console.log(`Transaction receipt: ${JSON.stringify(receipt, null, 2)}`);
 };
 
-export default deployYourContract;
+export default deployDFLTContract;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
-// e.g. yarn deploy --tags YourContract
-deployYourContract.tags = ["YourContract"];
+// e.g. yarn deploy --tags DailyFinancialLiteracyTracker
+deployDFLTContract.tags = ["DailyFinancialLiteracyTracker"];

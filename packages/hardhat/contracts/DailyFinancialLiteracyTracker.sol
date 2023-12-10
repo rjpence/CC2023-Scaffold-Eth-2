@@ -17,7 +17,7 @@ import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interface
  * A smart contract that allows changing a state variable of the contract and tracking the changes
   * @author Jason Banks, Randy Pence
  */
-contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
+contract DailyFinancialLiteracyTracker is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	// This extends the functionality of bytes32 with the ECDSA functions
 	using ECDSA for bytes32;
 	using FunctionsRequest for FunctionsRequest.Request;
@@ -242,7 +242,7 @@ contract YourContract is VRFConsumerBaseV2, FunctionsClient, ConfirmedOwner {
 	}
 
 	//Upon executing function, totalPoints adds one more total read and points one more read per user 
-	function userAction(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner public  {
+	function trackConsumedContent(address _user, bytes32 _contentItemHash, bytes memory _signedContentItemHash) onlyOwner external  {
  		// Recover the signer from the signature
         address signer = _contentItemHash.toEthSignedMessageHash().recover(_signedContentItemHash);
 
