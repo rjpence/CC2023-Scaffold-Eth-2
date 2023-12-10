@@ -130,13 +130,19 @@ describe("YourContract", function () {
     });
   });
 
-  describe("_distributeIndividualRewards", function () {
+  describe("withdrawRewards", function () {
     it("Distribute rewards to the user", async function () {
       const [_, user] = await ethers.getSigners();
-      await yourContract.connect(user).withdrawRewards();
-
+      const lastRewardsPerPoint = (await yourContract.users(user.address)).lastRewardsPerPoint;
+      const receipt = await (await yourContract.connect(user).withdrawRewards()).wait();
+      const lastRewardsPerPoint2 = (await yourContract.users(user.address)).lastRewardsPerPoint;
+      
       expect(Number((await yourContract.users(user.address)).lastRewardsPerPoint)).to.equal(Number(await yourContract.totalRewardsPerPoint()));
-    });
+      expect(receipt.events[0].event).to.equal("IndividualRewardsDistributed");
+      expect(receipt.events[1].event).to.equal("RewardsWithdrawn");
+      expect(lastRewardsPerPoint).to.be.lessThan(lastRewardsPerPoint2);
+      expect(Number((await yourContract.users(user.address)).rewards)).to.equal(0);
+    });    
   });
 
   describe("extProposeContentItem", function () {
