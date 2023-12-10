@@ -13,12 +13,19 @@ import { MetaHeader } from "~~/components/MetaHeader";
 import { InputBase, getParsedError } from "~~/components/scaffold-eth";
 // Custom component for the meta header
 import { Address } from "~~/components/scaffold-eth/Address";
+import deployedContracts from "~~/contracts/deployedContracts";
 // Custom component to display blockchain addresses
 import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
 // Hook to get information about deployed contracts
 import { useScaffoldContractRead } from "~~/hooks/scaffold-eth/useScaffoldContractRead";
-import deployedContracts from "~~/contracts/deployedContracts";
 import { notification } from "~~/utils/scaffold-eth";
+
+
+type User = {
+  points: number;
+  rewards: number;
+  lastRewardsPerPoint: number;
+};
 
 // Creating a functional component for the homepage
 const Home: NextPage = () => {
@@ -33,26 +40,20 @@ const Home: NextPage = () => {
       default:
         throw new Error(`Chain ${chainName} not found`);
     }
-  };  
+  };
   const _publicClient = createPublicClient({
-          chain: hardhat,
-          transport: http(),
+    chain: hardhat,
+    transport: http(),
   });
-  const yourContract = deployedContracts["43113"].YourContract;
-  const getEvents = async () => {
-    const events = await _publicClient.getContractEvents({
-      abi: yourContract.abi,
-      address: yourContract.address,
-      fromBlock: 28324189n,
-      toBlock: 28326189n,
-    });
-    return events;
-  }
-  
+  const publicClient = createPublicClient({
+    chain: hardhat /*getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string)*/,
+    transport: http(),
+  });
+
   const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
-  const contractName = "YourContract"; // Name of the smart contract to interact with
+  const contractName = "DailyFinancialLiteracyTracker"; // Name of the smart contract to interact with
   // Hooks to read data from the deployed contract using its name
   const { data: deployedContractData } = useDeployedContractInfo(contractName);
   const { data: totalPoints } = useScaffoldContractRead({
@@ -63,11 +64,13 @@ const Home: NextPage = () => {
     contractName: contractName,
     functionName: "totalItemsConsumed",
   });
-
-  const { data: totalUserPoints } = useScaffoldContractRead({
+  const { data: distributableRewards } = useScaffoldContractRead({
     contractName: contractName,
-    functionName: "points",
-    args: [address],
+    functionName: "distributableRewards",
+  });
+  const { data: epochTimestamp } = useScaffoldContractRead({
+    contractName: contractName,
+    functionName: "epochTimestamp",
   });
 
   // More state management hooks for various pieces of data
@@ -85,6 +88,8 @@ const Home: NextPage = () => {
   });
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
   const [linkClicked, setLinkClicked] = useState<boolean>(false);
+  const [user, setUser] = useState<User>();
+  const [isDistributable, setIsDistributable] = useState<boolean>(false);
 
   // Variables for proposing a new content item
   const [userInputUrl, setUserInputUrl] = useState<string>("");
@@ -92,7 +97,8 @@ const Home: NextPage = () => {
   const [isTitleFetched, setIsTitleFetched] = useState<boolean>(false);
   const [fetchTitleErrorMessage, setFetchTitleErrorMessage] = useState<string>("");
   const [proposeTransactionHash, setProposeTransactionHash] = useState<string>("");
-  const { writeAsync } = useScaffoldContractWrite({
+  const [endEpochTransactionHash, setEndEpochTransactionHash] = useState<string>("");
+  const { writeAsync: proposeContentItem } = useScaffoldContractWrite({
     contractName: contractName,
     functionName: "extProposeContentItem",
     args: [
@@ -110,7 +116,7 @@ const Home: NextPage = () => {
     onBlockConfirmation: txnReceipt => {
       console.log("proposeContentItem transaction confirmed:", txnReceipt.transactionHash);
       setProposeTransactionHash(txnReceipt.transactionHash);
-      console.log("Transaction blockHash", txnReceipt.blockHash);
+      console.log("proposeContentItem transaction hash", txnReceipt.transactionHash);
     },
     onError: error => {
       const message = getParsedError(error);
@@ -118,9 +124,49 @@ const Home: NextPage = () => {
       setFetchTitleErrorMessage(capitalizedMessage);
     },
   });
+
+  const { writeAsync: endEpoch } = useScaffoldContractWrite({
+    contractName: contractName,
+    functionName: "endEpoch",
+    onBlockConfirmation: txnReceipt => {
+      console.log("endEpoch transaction confirmed:", txnReceipt.transactionHash);
+      setEndEpochTransactionHash(txnReceipt.transactionHash);
+      console.log("endEpoch transaction hash", txnReceipt.transactionHash);
+    },
+  });
+
   const chainlinkDONIdHex = "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000";
   const chainlinkSubscriptionId = 1632;
   const chainlinkFunctionsGasLimit = 300000;
+
+  useEffect(() => {
+    if (distributableRewards && Number(distributableRewards) >= 1 * 10 ** 18 && totalPoints && Number(totalPoints) > 0) {
+      console.log("distributableRewards:", distributableRewards);
+      setIsDistributable(true);
+    } else {
+      setIsDistributable(false);
+    }
+  }, [distributableRewards]);
+
+  // TODO: update dependency array to include when ValidProposalRewarded event is emitted
+  useEffect(() => {
+    const getUserData = async (address: string) => {
+      return await publicClient.readContract({
+        ...deployedContracts["31337"].DailyFinancialLiteracyTracker,
+        functionName: "users",
+        args: [address],
+      });
+    };
+    if (address) {
+      getUserData(address).then(data => {
+        setUser({
+          points: Number(data[0]),
+          rewards: Number(data[1]),
+          lastRewardsPerPoint: Number(data[2]),
+        });
+      });
+    }
+  }, [address, consumeTransactionHash, endEpochTransactionHash]);
 
   // useEffect hooks are used to perform side effects in the component, like API calls, data fetching, etc.
   useEffect(() => {
@@ -171,23 +217,18 @@ const Home: NextPage = () => {
   useEffect(() => {
     if (transactionSignature.length > 0) {
       console.log("transactionSignature has been updated:", transactionSignature);
-      const sendUserActionTransaction = async () => {
-        console.log("Sending signed userAction transaction...");
+      const sendTrackConsumedContentTransaction = async () => {
+        console.log("Sending signed trackConsumedContent transaction...");
 
-        const publicClient = createPublicClient({
-          chain: getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string),
-          transport: http(),
-        });
-
-        const userActionTransactionHash = await publicClient.sendRawTransaction({
+        const trackConsumedContentTransactionHash = await publicClient.sendRawTransaction({
           serializedTransaction: transactionSignature as `0x${string}`,
         });
 
-        console.log("userActionTransactionHash:", userActionTransactionHash);
+        console.log("trackConsumedContentTransactionHash:", trackConsumedContentTransactionHash);
 
-        setConsumeTransactionHash(userActionTransactionHash);
+        setConsumeTransactionHash(trackConsumedContentTransactionHash);
       };
-      sendUserActionTransaction();
+      sendTrackConsumedContentTransaction();
     }
   }, [transactionSignature]);
 
@@ -209,7 +250,7 @@ const Home: NextPage = () => {
       console.log("... proposeContentItemHash:", proposedContentItemHash);
       console.log("... userInputUrl:", userInputUrl);
       console.log("... fetchedTitle:", fetchedTitle);
-      writeAsync({
+      proposeContentItem({
         args: [
           proposedContentItemHash,
           // chainlinkFunctionsRequestSource, // source
@@ -247,6 +288,12 @@ const Home: NextPage = () => {
         console.log("Answer is incorrect!");
       }
     }
+  };
+
+  const handleEndEpoch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log("Calling endEpoch...");
+    endEpoch();
   };
 
   const validateAnswer = (answer: string): boolean => {
@@ -338,6 +385,20 @@ const Home: NextPage = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  function convertTimestampToUTCTimeString(timestamp: number): string {
+    const date = new Date(timestamp * 1000);
+
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    const seconds = date.getUTCSeconds();
+
+    // Format the time components into a string
+    // This will display time in HH:MM:SS format
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
   useScaffoldEventSubscriber({
     contractName: contractName,
     eventName: "ContentItemConsumed",
@@ -389,27 +450,57 @@ const Home: NextPage = () => {
       });
     },
   });
+  // TODO: try replacing with Wagmi or Viem directly, as this does not appear to consistently update
   useScaffoldEventSubscriber({
     contractName: contractName,
     eventName: "ValidProposalRewarded",
     listener: logs => {
       logs.map(log => {
         const { _proposer, _contentItemHash, _proposalReward, _totalProposerPoints } = log.args;
-        console.log("📡 ValidationResponseReceived event", _proposer, _contentItemHash, _proposalReward, _totalProposerPoints);
+        console.log(
+          "📡 ValidProposalRewarded event",
+          _proposer,
+          _contentItemHash,
+          _proposalReward,
+          _totalProposerPoints,
+        );
         notification.success(`Proposal accepted! You earned ${_proposalReward} points!`, { icon: "🎉" });
+      });
+    },
+  });
+
+  useScaffoldEventSubscriber({
+    contractName: contractName,
+    eventName: "RewardsDistributed",
+    listener: logs => {
+      logs.map(log => {
+        const { _previousTotalRewardsPerPoint, _totalRewardsPerPoint, _previousDistributableRewards, _totalPoints } =
+          log.args;
+        console.log(
+          "📡 RewardsDistributed event",
+          _previousTotalRewardsPerPoint,
+          _totalRewardsPerPoint,
+          _previousDistributableRewards,
+          _totalPoints,
+        );
       });
     },
   });
 
   // The return statement of the component, which renders the UI
   // TODO: display a quiz/form with the questions and answers after the user has clicked the link
-  //       when the user submits the correct answer, the userAction function should be called
+  //       when the user submits the correct answer, the trackConsumedContent function should be called
   return (
     <div>
       <MetaHeader />
       {/* JSX code to render various parts of the page like links, forms, counters, etc. */}
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h1>Financial Literacy Dapp</h1>
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        <h2>⏳ Epoch Started</h2>
+        <div className="p-4 text-4xl">{new Date(Number(epochTimestamp) * 1000).toDateString()}</div>
+        <div className="p-4 text-4xl">{convertTimestampToUTCTimeString(Number(epochTimestamp))}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
         {contentItemUrl && contentItemTitle && (
@@ -449,13 +540,30 @@ const Home: NextPage = () => {
         <div className="p-4 text-4xl">{totalItemsConsumed?.toString()}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
+        <h2>💰 Total Rewards to Distribute 💸</h2>
+        <div className="p-4 text-4xl">{distributableRewards?.toString()}</div>
+        <div className="flex items-center flex-col flex-grow pt=10 my-10">
+          <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
+            <button type="submit" className="btn btn-outline btn-primary" disabled={!isDistributable}>
+              End Epoch 👩‍⚖️
+            </button>
+            <div><p>This will distribute the distributable rewards.</p></div>
+          </form>
+        </div>
+      </div>
+      <div className="flex items-center flex-col flex-grow pt=10 my-10">
         <h2>Total Points</h2>
         <div className="p-4 text-4xl">{Number(totalPoints) * pointsUIMultiplier}</div>
       </div>
       <div className="flex items-center flex-col flex-grow pt=10 my-10">
-        <h2>Your Points</h2>
-        <Address address={address} />
-        <div className="p-4 text-4xl">{Number(totalUserPoints) * pointsUIMultiplier}</div>
+        <h2>Your Data</h2>
+        {user && (
+          <div>
+            <Address address={address} />
+            <div className="p-4 text-4xl">Points: {user.points * pointsUIMultiplier}</div>
+            <div className="p-4 text-4xl">Rewards: {user.rewards}</div>
+          </div>
+        )}
       </div>
       <></>
       {/* Form for proposing a new content item */}
