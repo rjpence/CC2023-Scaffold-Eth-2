@@ -47,7 +47,7 @@ const deployDFLTContract: DeployFunction = async function (hre: HardhatRuntimeEn
   // TODO: Get a new OpenAI key and encrypt it for proper deployment
   const chainlinkFunctionsRequestSource =
     'const url = "https://api.openai.com/v1/chat/completions";\n' +
-    'const openAIApiKey = "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";\n' +
+    'const openAIApiKey = "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";\n' +
     "const contentItemUrl = args[0];\n" +
     "const contentItemTitle = args[1];\n" +
     "const messageContent =\n" +

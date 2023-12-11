@@ -23,7 +23,7 @@ const etherscanApiKey = process.env.ETHERSCAN_API_KEY || "DNXJA8RX2Q3VZ4URQIWP7Z
 // https://hardhat.org/hardhat-network/
 // https://hardhat.org/guides/mainnet-forking.html
 // See https://docs.avax.network/build/dapp/smart-contracts/toolchains/hardhat
-const FORK_FUJI = false;
+const FORK_FUJI = true;
 const FORK_MAINNET = false;
 const forkingData = FORK_FUJI
   ? {

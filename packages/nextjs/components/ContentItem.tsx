@@ -1,5 +1,4 @@
 import Image from "next/image";
-import gradient1 from "../public/gradient-1.png";
 import { contentItemImageData } from "./contentItemImageData";
 
 /**
