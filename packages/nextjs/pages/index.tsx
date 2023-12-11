@@ -13,7 +13,6 @@ import { ContentItem } from "~~/components/ContentItem";
 import { MetaHeader } from "~~/components/MetaHeader";
 import { InputBase, getParsedError } from "~~/components/scaffold-eth";
 // Custom component for the meta header
-import { Address } from "~~/components/scaffold-eth/Address";
 import deployedContracts from "~~/contracts/deployedContracts";
 // Custom component to display blockchain addresses
 import { useDeployedContractInfo, useScaffoldContractWrite, useScaffoldEventSubscriber } from "~~/hooks/scaffold-eth";
@@ -42,16 +41,11 @@ const Home: NextPage = () => {
         throw new Error(`Chain ${chainName} not found`);
     }
   };
-  const _publicClient = createPublicClient({
-    chain: hardhat,
-    transport: http(),
-  });
   const publicClient = createPublicClient({
-    chain: hardhat /*getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string)*/,
+    chain: getChain(process.env.NEXT_PUBLIC_CHAIN_NAME as string),
     transport: http(),
   });
 
-  const pointsUIMultiplier = 10; // Multiplier to convert points to UI units
   // State management hooks to store different pieces of information
   const { address } = useAccount(); // Retrieves the current user's blockchain address
   const contractName = "DailyFinancialLiteracyTracker"; // Name of the smart contract to interact with
@@ -148,7 +142,7 @@ const Home: NextPage = () => {
   useEffect(() => {
     const getUserData = async (address: string) => {
       return await publicClient.readContract({
-        ...deployedContracts["31337"].DailyFinancialLiteracyTracker,
+        ...deployedContracts["43113"].DailyFinancialLiteracyTracker,
         functionName: "users",
         args: [address],
       });
@@ -540,28 +534,43 @@ const Home: NextPage = () => {
           <></>
           {/* Form for proposing a new content item */}
           <div className="flex items-center flex-col flex-grow pt=10 my-10">
-            <div className="card w-96 bg-primary text-primary-content">
+            <div>
+              <div className="card w-96 bg-primary text-primary-content">
+                <div className="card-body">
+                  <h2 className="card-title">Propose</h2>
+                  <p>Propose financial literacy and well-being content to earn rewards!</p>
+                  <form onSubmit={handleUrlSubmit} className="flex flex-col items-center">
+                    <InputBase
+                      name="url"
+                      placeholder="URL"
+                      value={userInputUrl}
+                      onChange={setUserInputUrl}
+                      error={fetchTitleErrorMessage.length > 0}
+                    />
+                    <div className="card-actions justify-end">
+                      <button type="submit" className="btn my-4">
+                        Propose Content
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
+              {proposeTransactionHash.length > 0 && <p>Successfully proposed!</p>}
+            </div>
+            <div className="card w-96 bg-primary text-primary-content my-4">
               <div className="card-body">
-                <h2 className="card-title">Propose</h2>
-                <p>Propose financial literacy and well-being content to earn rewards!</p>
-                <form onSubmit={handleUrlSubmit} className="flex flex-col items-center">
-                  <InputBase
-                    name="url"
-                    placeholder="URL"
-                    value={userInputUrl}
-                    onChange={setUserInputUrl}
-                    error={fetchTitleErrorMessage.length > 0}
-                  />
+                <h2 className="card-title">End Epoch</h2>
+                <p>End the epoch to distribute rewards and start a new epoch!</p>
+                <form onSubmit={handleEndEpoch} className="flex flex-col items-center">
                   <div className="card-actions justify-end">
-                    <button type="submit" className="btn my-4">
-                      Propose Content
+                    <button type="submit" className="btn my-4" disabled={!isDistributable}>
+                      End Epoch
                     </button>
                   </div>
                 </form>
               </div>
             </div>
-            {isTitleFetched && <p>Title from URL successfully obtained! Sending to the blockchain...</p>}
-            {proposeTransactionHash.length > 0 && <p>Successfully proposed!</p>}
           </div>
         </div>
       )}

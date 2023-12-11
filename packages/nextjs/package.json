@@ -11,6 +11,7 @@
     "format": "prettier --write . '!(node_modules|.next|contracts)/**/*'",
     "check-types": "tsc --noEmit --incremental",
     "vercel": "vercel",
+    "postinstall": "patch-package",
     "vercel:yolo": "vercel --build-env NEXT_PUBLIC_IGNORE_BUILD_ERROR=true"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "daisyui": "^3.5.1",
     "next": "^13.1.6",
     "nextjs-progressbar": "^0.0.16",
+    "patch-package": "^8.0.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-copy-to-clipboard": "^5.1.0",

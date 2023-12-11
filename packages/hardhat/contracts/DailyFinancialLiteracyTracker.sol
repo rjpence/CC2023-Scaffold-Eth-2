@@ -61,7 +61,7 @@ contract DailyFinancialLiteracyTracker is VRFConsumerBaseV2, FunctionsClient, Co
 	uint64 public vrf_subscriptionId = 855; // avalanche Fuji testnet
 	VRFCoordinatorV2Interface public vrfCoordinator;
 	bytes32 public vrf_keyHash = 0x354d2f95da55398f44b7cff77da56283d9c6c829a4bdf1bbcaf2ad6a4d081f61; // avalanche Fuji testnet;
-	uint32 public callbackGasLimit = 40000;
+	uint32 public callbackGasLimit = 400000;
 	uint16 public requestConfirmations = 3;
 	uint32 public constant numWords =  1;
 
@@ -325,6 +325,7 @@ contract DailyFinancialLiteracyTracker is VRFConsumerBaseV2, FunctionsClient, Co
 		// Total consumption is tracked, so that users can benefit in future epochs
 		// even if they do not maintain eligibility in the current epoch
 		user.points += consumptionPoints;
+		user.latestConsumptionTimestamp = block.timestamp;
 		totalItemsConsumed +=1;
 	}
 
@@ -373,15 +374,32 @@ contract DailyFinancialLiteracyTracker is VRFConsumerBaseV2, FunctionsClient, Co
 	// A user is only eligible if they have consumed content daily in the current epoch, which means:
 	// - they have epoch points and
 	// - they have consumed content daily in the current epoch
-	function isEligible(User memory _user) public view returns (bool) {
+	function isEligible(address _user) public view returns (bool) {
+		User memory user = users[_user];
+		if (hasEpochPoints(user) && !hasMissedADay(user)) return true;
+
+		return false;
+	}
+
+	function isEligible(User memory _user) private view returns (bool) {
 
 		if (hasEpochPoints(_user) && !hasMissedADay(_user)) return true;
 
 		return false;
 	}
 
+	function hasEpochPoints(address _user) public view returns (bool) {
+		User memory user = users[_user];
+		return hasEpochPoints(user);
+	}
+
 	function hasEpochPoints(User memory user) private pure returns (bool) {
 		return user.epochPoints > 0;
+	}
+
+	function hasMissedADay(address _user) public view returns (bool) {
+		User memory user = users[_user];
+		return hasMissedADay(user);
 	}
 
 	// A user has missed a day if:
