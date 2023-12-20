@@ -29,6 +29,7 @@ type User = {
 
 // Creating a functional component for the homepage
 const Home: NextPage = () => {
+  // TODO: refactor
   const getChain = (chainName: string) => {
     switch (chainName) {
       case "hardhat":
